@@ -1,0 +1,150 @@
+{
+ "id": "cf-demo-spectrum",
+ "equipment_id": "eq-spectrum-keysight",
+ "window_start": "2026-11-24T04:30:00Z",
+ "window_end": "2026-11-24T06:30:00Z",
+ "booking_ids": [
+  "bk-demo-spectrum-0",
+  "bk-demo-spectrum-1",
+  "bk-demo-spectrum-2"
+ ],
+ "capacity": 1,
+ "status": "open",
+ "recommendation": null,
+ "ai_explanation": null,
+ "explanation_source": null,
+ "messages": {},
+ "resolved_by": null,
+ "resolved_at": null,
+ "equipment_name": "Keysight N9320B Spectrum Analyser",
+ "lab_name": "RF & Microwave Lab",
+ "n_requests": 3,
+ "requests": [
+  {
+   "booking_id": "bk-demo-spectrum-0",
+   "student": "Aarav Shetty",
+   "project": "Phased antenna array for 2.4 GHz ISM band",
+   "breakdown": {
+    "score": 0.8194,
+    "factors": {
+     "deadline": {
+      "label": "5 days before deadline",
+      "value": 0.8333333333333334,
+      "weight": 0.35,
+      "contribution": 0.2916666666666667
+     },
+     "fairness": {
+      "label": "2 hours used in the last 7 days",
+      "value": 0.8,
+      "weight": 0.25,
+      "contribution": 0.2
+     },
+     "project": {
+      "label": "Capstone",
+      "value": 1.0,
+      "weight": 0.2,
+      "contribution": 0.2
+     },
+     "approval": {
+      "label": "Access approved",
+      "value": 1.0,
+      "weight": 0.1,
+      "contribution": 0.1
+     },
+     "waiting": {
+      "label": "Waiting 20.0 hours",
+      "value": 0.2777779981867284,
+      "weight": 0.1,
+      "contribution": 0.02777779981867284
+     }
+    }
+   },
+   "start": "2026-11-24T04:30:00Z",
+   "end": "2026-11-24T06:30:00Z"
+  },
+  {
+   "booking_id": "bk-demo-spectrum-1",
+   "student": "Sneha Pai",
+   "project": "ML-based RF signal classification",
+   "breakdown": {
+    "score": 0.6,
+    "factors": {
+     "deadline": {
+      "label": "19 days before deadline",
+      "value": 0.3666666666666667,
+      "weight": 0.35,
+      "contribution": 0.12833333333333333
+     },
+     "fairness": {
+      "label": "0 hours used in the last 7 days",
+      "value": 1.0,
+      "weight": 0.25,
+      "contribution": 0.25
+     },
+     "project": {
+      "label": "Research",
+      "value": 0.9,
+      "weight": 0.2,
+      "contribution": 0.18000000000000002
+     },
+     "approval": {
+      "label": "No prior approval",
+      "value": 0.0,
+      "weight": 0.1,
+      "contribution": 0.0
+     },
+     "waiting": {
+      "label": "Waiting 30.0 hours",
+      "value": 0.4166668870756173,
+      "weight": 0.1,
+      "contribution": 0.04166668870756173
+     }
+    }
+   },
+   "start": "2026-11-24T04:30:00Z",
+   "end": "2026-11-24T06:30:00Z"
+  },
+  {
+   "booking_id": "bk-demo-spectrum-2",
+   "student": "Kabir Rao",
+   "project": "Lightweight drone frame",
+   "breakdown": {
+    "score": 0.2778,
+    "factors": {
+     "deadline": {
+      "label": "No deadline",
+      "value": 0.2,
+      "weight": 0.35,
+      "contribution": 0.06999999999999999
+     },
+     "fairness": {
+      "label": "5 hours used in the last 7 days",
+      "value": 0.5,
+      "weight": 0.25,
+      "contribution": 0.125
+     },
+     "project": {
+      "label": "Personal",
+      "value": 0.4,
+      "weight": 0.2,
+      "contribution": 0.08000000000000002
+     },
+     "approval": {
+      "label": "No prior approval",
+      "value": 0.0,
+      "weight": 0.1,
+      "contribution": 0.0
+     },
+     "waiting": {
+      "label": "Waiting 2.0 hours",
+      "value": 0.027777998186728395,
+      "weight": 0.1,
+      "contribution": 0.0027777998186728397
+     }
+    }
+   },
+   "start": "2026-11-24T04:30:00Z",
+   "end": "2026-11-24T06:30:00Z"
+  }
+ ]
+}

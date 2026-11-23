@@ -1,0 +1,51 @@
+[
+ {
+  "id": "u-aarav",
+  "name": "Aarav Shetty",
+  "role": "student",
+  "department": "ECE",
+  "blurb": "Reserve RF equipment for an antenna capstone."
+ },
+ {
+  "id": "u-meera",
+  "name": "Dr. Meera Kulkarni",
+  "role": "faculty",
+  "department": "ECE",
+  "blurb": "Review requests and resolve a spectrum analyser conflict."
+ },
+ {
+  "id": "u-ravi",
+  "name": "Ravi Kumar",
+  "role": "lab_admin",
+  "department": "CENTRAL",
+  "blurb": "Track utilisation and manage the campus catalogue."
+ },
+ {
+  "id": "u-diya",
+  "name": "Diya Nair",
+  "role": "student",
+  "department": "CSE",
+  "blurb": "Request GPU time and a Jetson kit."
+ },
+ {
+  "id": "u-kabir",
+  "name": "Kabir Rao",
+  "role": "student",
+  "department": "ME",
+  "blurb": "Prototype a lightweight frame and check training requirements."
+ },
+ {
+  "id": "u-sneha",
+  "name": "Sneha Pai",
+  "role": "student",
+  "department": "MNC",
+  "blurb": "Review booking outcomes and accept alternatives."
+ },
+ {
+  "id": "u-arjun",
+  "name": "Prof. Arjun Hegde",
+  "role": "faculty",
+  "department": "CSE",
+  "blurb": "Review GPU and embedded systems requests."
+ }
+]

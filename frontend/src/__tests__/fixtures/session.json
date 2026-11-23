@@ -1,0 +1,28 @@
+{
+ "user": {
+  "id": "u-meera",
+  "name": "Dr. Meera Kulkarni",
+  "role": "faculty",
+  "department_id": "ece",
+  "year": null,
+  "certifications": [
+   "laser-safety",
+   "rf-safety",
+   "bsl1-biosafety",
+   "machine-shop-basic",
+   "high-voltage"
+  ],
+  "no_show_count": 0,
+  "blurb": "Review requests and resolve a spectrum analyser conflict."
+ },
+ "permissions": [
+  "discover",
+  "bookings",
+  "projects",
+  "notifications",
+  "approvals",
+  "conflicts",
+  "analytics"
+ ],
+ "demo_mode": true
+}
