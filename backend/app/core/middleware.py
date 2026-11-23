@@ -22,6 +22,20 @@ def error_data(code: str, message: str, request_id: str, details: object = None)
     return {"error": {"code": code, "message": message, "details": details or {}, "request_id": request_id}}
 
 
+def replay_body(raw: bytes, receive: Receive) -> Receive:
+    """Replay the validated body once, then forward ASGI receive events."""
+    pending = True
+
+    async def buffered() -> Message:
+        nonlocal pending
+        if pending:
+            pending = False
+            return {"type": "http.request", "body": raw, "more_body": False}
+        return await receive()
+
+    return buffered
+
+
 class Limiter:
     """Track rate limit windows by action and subject."""
 
@@ -73,40 +87,22 @@ class SecurityMiddleware:
                 self.headers(MutableHeaders(scope=message), request_id, api)
             await send(message)
 
-        async def reject(code: str, message: str, response_status: int, retry: int = 0) -> None:
-            response = JSONResponse(
-                error_data(code, message, request_id),
-                response_status,
-                headers={"Retry-After": str(retry)} if retry else None,
-            )
-            await response(scope, receive, with_headers)
-
         try:
             if api:
-                headers = Headers(scope=scope)
-                if method in MUTATING and headers.get("x-requested-with") != "LabLink":
-                    await reject("CSRF_CHECK_FAILED", "The request could not be verified.", 403)
-                    return
-                retry = self.rate(scope, headers, path, method)
-                if retry:
-                    await reject("RATE_LIMITED", "Too many requests. Please try again shortly.", 429, retry)
+                rejection = self.check_api_request(scope, request_id)
+                if rejection is not None:
+                    await rejection(scope, receive, with_headers)
                     return
                 if method in MUTATING:
                     raw = await self.body(receive)
                     if raw is None:
-                        await reject("BODY_TOO_LARGE", "Request bodies are limited to 64 KB.", 413)
+                        rejection = JSONResponse(
+                            error_data("BODY_TOO_LARGE", "Request bodies are limited to 64 KB.", request_id),
+                            status_code=413,
+                        )
+                        await rejection(scope, receive, with_headers)
                         return
-                    first = True
-
-                    async def buffered() -> Message:
-                        nonlocal first
-                        if first:
-                            first = False
-                            return {"type": "http.request", "body": raw, "more_body": False}
-                        return await receive()
-
-                    await self.app(scope, buffered, with_headers)
-                    return
+                    receive = replay_body(raw, receive)
             await self.app(scope, receive, with_headers)
         finally:
             LOG.info(
@@ -121,6 +117,24 @@ class SecurityMiddleware:
                     }
                 )
             )
+
+    def check_api_request(self, scope: Scope, request_id: str) -> JSONResponse | None:
+        """Check the CSRF marker before charging the request to a rate limit."""
+        headers = Headers(scope=scope)
+        method = scope["method"]
+        if method in MUTATING and headers.get("x-requested-with") != "LabLink":
+            return JSONResponse(
+                error_data("CSRF_CHECK_FAILED", "The request could not be verified.", request_id),
+                status_code=403,
+            )
+        retry = self.rate(scope, headers, scope["path"], method)
+        if retry:
+            return JSONResponse(
+                error_data("RATE_LIMITED", "Too many requests. Please try again shortly.", request_id),
+                status_code=429,
+                headers={"Retry-After": str(retry)},
+            )
+        return None
 
     async def body(self, receive: Receive) -> bytes | None:
         """Buffer a request body up to the configured byte limit."""

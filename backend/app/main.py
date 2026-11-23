@@ -10,6 +10,7 @@ from starlette.exceptions import HTTPException
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import FileResponse, JSONResponse, Response
 from starlette.staticfiles import StaticFiles
+from starlette.types import Scope
 
 from .ai.ai_service import AIService, build_ai_service
 from .api.routes import (
@@ -39,7 +40,7 @@ LOG = logging.getLogger("lablink")
 class Assets(StaticFiles):
     """Serve fingerprinted frontend assets with long-lived caching."""
 
-    async def get_response(self, path: str, scope: dict) -> Response:
+    async def get_response(self, path: str, scope: Scope) -> Response:
         """Mark the static asset response as cacheable and immutable."""
         response = await super().get_response(path, scope)
         response.headers["Cache-Control"] = "public, max-age=31536000, immutable"

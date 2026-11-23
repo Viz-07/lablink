@@ -34,9 +34,9 @@ def draft(s: SignedIn, payload: Draft) -> dict:
     result, source = s.ctx.ai.draft(project, items, chosen, payload.notes)
     training = sorted(
         {
-            s.state.equipment[hit.equipment_id].required_training
+            certification
             for hit in result.suggested_equipment
-            if s.state.equipment[hit.equipment_id].required_training
+            if (certification := s.state.equipment[hit.equipment_id].required_training)
         }
     )
     return {**result.model_dump(), "source": source, "training_needed": training}

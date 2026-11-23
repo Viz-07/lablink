@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from ..core.errors import AppError, require
 from ..domain.constants import QUEUE
@@ -139,23 +139,36 @@ def review_access(
 
 def approval_item(state: State, entry: AccessRequest | Booking, actor: User, now: datetime) -> dict:
     """Build a review queue record with contextual details and flags."""
-    is_booking = isinstance(entry, Booking)
-    requester_id = entry.user_id if is_booking else entry.requester_id
-    user = state.users[requester_id]
-    keys = [entry.equipment_id] if is_booking else entry.equipment_ids
+    conflict_id = None
+    start: date
+    end: date
+    if isinstance(entry, Booking):
+        kind = "booking"
+        requester_id = entry.user_id
+        equipment_ids = [entry.equipment_id]
+        justification = entry.purpose
+        hours = minutes(entry) / 60
+        start, end = entry.start, entry.end
+        if entry.conflict_id and state.conflicts[entry.conflict_id].status == "open":
+            conflict_id = entry.conflict_id
+    else:
+        kind = "access"
+        requester_id = entry.requester_id
+        equipment_ids = entry.equipment_ids
+        justification = entry.justification
+        hours = entry.hours_requested
+        start, end = entry.needed_from, entry.needed_until
     return {
-        "type": "booking" if is_booking else "access",
+        "type": kind,
         "id": entry.id,
-        "requester": user.name,
-        "equipment": [state.equipment[k].name for k in keys],
+        "requester": state.users[requester_id].name,
+        "equipment": [state.equipment[key].name for key in equipment_ids],
         "project": state.projects.get(entry.project_id or ""),
         "created_at": entry.created_at,
-        "justification": entry.purpose if is_booking else entry.justification,
-        "hours": minutes(entry) / 60 if is_booking else entry.hours_requested,
-        "start": entry.start if is_booking else entry.needed_from,
-        "end": entry.end if is_booking else entry.needed_until,
+        "justification": justification,
+        "hours": hours,
+        "start": start,
+        "end": end,
         "flags": flags(state, entry, actor, now),
-        "conflict_id": entry.conflict_id
-        if is_booking and entry.conflict_id and state.conflicts[entry.conflict_id].status == "open"
-        else None,
+        "conflict_id": conflict_id,
     }

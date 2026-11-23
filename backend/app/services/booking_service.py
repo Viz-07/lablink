@@ -72,9 +72,11 @@ def create_booking(
         return AppError("SLOT_UNAVAILABLE", "This alternative now needs review. Choose another time.", 409)
     state.bookings[booking.id] = booking
     if needs_approval:
-        for reviewer in {*state.labs[item.lab_id].supervisor_ids, state.projects[project_id or ""].supervisor_id} - {
-            None
-        }:
+        reviewers = set(state.labs[item.lab_id].supervisor_ids)
+        project_supervisor = state.projects[project_id or ""].supervisor_id
+        if project_supervisor is not None:
+            reviewers.add(project_supervisor)
+        for reviewer in reviewers:
             notify(state, now, reviewer, "approval_needed", "Booking needs review", item.name, "/approvals")
         notify(state, now, user.id, "booking_pending", "Booking sent for approval", item.name, "/bookings")
     elif competing + 1 > len(units):

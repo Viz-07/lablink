@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from ..domain.enums import Category
 from ..domain.models import Department, Equipment, Lab, Window
@@ -490,13 +491,18 @@ def seed_catalogue(state: State, now: datetime) -> None:
         lab = state.labs[f"lab-{lab_key}"]
         first, first_value, second, second_value = spec.split("|")
         capabilities = tags.split(",")
+        kind: Literal["equipment", "dev_kit", "workstation"] = "equipment"
+        if category == "dev_kit":
+            kind = "dev_kit"
+        elif category == "workstation":
+            kind = "workstation"
         item = Equipment(
             id=f"eq-{key}",
             name=name,
             category=Category(category),
             lab_id=lab.id,
             department_id=lab.department_id,
-            kind=category if category in ("dev_kit", "workstation") else "equipment",
+            kind=kind,
             description=(
                 f"Shared campus resource in the {lab.name}. Supports {', '.join(capabilities[:3]).replace('-', ' ')}."
             ),

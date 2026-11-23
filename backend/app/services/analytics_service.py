@@ -1,12 +1,31 @@
+from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import TypedDict
 
 from ..ai.schemas import Insight
 from ..domain.constants import OCCUPIED
 from ..domain.enums import BookingStatus, Role
-from ..domain.models import Booking, Interval, User
+from ..domain.models import Booking, DemandEvent, Interval, User
 from ..domain.timeslots import IST, at_local, campus_date, minutes, opening, overlaps
 from ..repositories.base import State
 from .permissions import supervises
+
+
+class EquipmentUsage(TypedDict):
+    id: str
+    name: str
+    utilisation_pct: float
+    demand_ratio: float
+    bookings: int
+    no_show_pct: float
+    available_minutes: int
+
+
+class DepartmentUsage(TypedDict):
+    id: str
+    name: str
+    bookings: int
+    hours: float
 
 
 def percent(value: float, total: float) -> float:
@@ -33,19 +52,30 @@ def overview(
         and (not lab or item.lab_id == lab)
         and item.status != "retired"
     ]
-    by_equipment, by_department = [], {}
+    visible_ids = {item.id for item in visible}
+    bookings_by_equipment: defaultdict[str, list[Booking]] = defaultdict(list)
+    for booking in state.bookings.values():
+        if booking.equipment_id in visible_ids and overlaps(booking, window):
+            bookings_by_equipment[booking.equipment_id].append(booking)
+    rejected_by_equipment: defaultdict[str, list[DemandEvent]] = defaultdict(list)
+    for event in state.demand_events.values():
+        if event.equipment_id in visible_ids and overlaps(event, window):
+            rejected_by_equipment[event.equipment_id].append(event)
+
+    by_equipment: list[EquipmentUsage] = []
+    by_department: dict[str, DepartmentUsage] = {}
     heat = [[0 for _ in range(12)] for _ in range(7)]
     booked: list[Booking] = []
     supply, used, contested = 0, 0, 0
     for item in visible:
-        history = [b for b in state.bookings.values() if b.equipment_id == item.id and overlaps(b, window)]
+        history = bookings_by_equipment[item.id]
         occupied = [b for b in history if b.status in OCCUPIED]
         waitlisted = [
             b
             for b in history
             if b.status in {BookingStatus.CONTESTED, BookingStatus.DECLINED, BookingStatus.REALLOCATED}
         ]
-        rejected = [d for d in state.demand_events.values() if d.equipment_id == item.id and overlaps(d, window)]
+        rejected = rejected_by_equipment[item.id]
         capacity = sum(
             duration(interval, window)
             for day in range(days)
