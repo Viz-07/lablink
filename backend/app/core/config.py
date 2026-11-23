@@ -5,6 +5,8 @@ from secrets import token_urlsafe
 
 @dataclass(frozen=True)
 class Settings:
+    """Define runtime defaults for storage, AI, sessions, and booking."""
+
     production: bool = False
     storage: str = "memory"
     gcp_project: str = ""

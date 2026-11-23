@@ -37,13 +37,18 @@ LOG = logging.getLogger("lablink")
 
 
 class Assets(StaticFiles):
+    """Serve fingerprinted frontend assets with long-lived caching."""
+
     async def get_response(self, path: str, scope: dict) -> Response:
+        """Mark the static asset response as cacheable and immutable."""
         response = await super().get_response(path, scope)
         response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         return response
 
 
 def errors(app: FastAPI) -> None:
+    """Register the API handlers that produce structured error responses."""
+
     @app.exception_handler(AppError)
     async def app_error(request: Request, error: AppError) -> JSONResponse:
         return JSONResponse(
@@ -73,6 +78,8 @@ def errors(app: FastAPI) -> None:
 
 
 class HandleUnexpected:
+    """Log unhandled errors and return a generic JSON response."""
+
     def __init__(self, app) -> None:
         self.app = app
 
@@ -101,6 +108,7 @@ class HandleUnexpected:
 
 
 def mount_spa(app: FastAPI, static_dir: Path) -> None:
+    """Serve built assets and route non-API navigation to the SPA."""
     if (static_dir / "assets").is_dir():
         app.mount("/assets", Assets(directory=static_dir / "assets"), name="assets")
 
@@ -121,6 +129,7 @@ def create_app(
     clock: Clock | None = None,
     static_dir: Path | None = None,
 ) -> FastAPI:
+    """Configure the application with injectable storage, AI, clock, and static files."""
     config = settings or load_settings()
     repository, timer = repo or build_repository(config), clock or SystemClock()
 

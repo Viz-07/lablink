@@ -15,6 +15,7 @@ from .events import audit, new_id, notify
 def save_equipment(
     state: State, actor: User, changes: dict[str, Any], now: datetime, horizon: int, key: str | None = None
 ) -> Equipment:
+    """Validate and persist an audited equipment creation or update."""
     require(actor.role == Role.ADMIN, "FORBIDDEN", "Lab administrator access required.", 403)
     original = find(state.equipment, key, "Equipment") if key else None
     item_id = original.id if original else new_id("eq")

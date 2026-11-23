@@ -473,6 +473,7 @@ INVENTORY = [
 
 
 def seed_catalogue(state: State, now: datetime) -> None:
+    """Populate the demo departments, labs, and equipment."""
     state.departments.update({i: Department(id=i, name=n, code=i.upper()) for i, n in DEPARTMENTS.items()})
     for key, name, department, room, opens, closes, days, supervisor in LABS:
         lab = Lab(

@@ -23,6 +23,7 @@ def review_booking(
     now: datetime,
     horizon: int,
 ) -> Booking | AppError:
+    """Apply a review decision and confirm eligible bookings when possible."""
     must_review(actor, state, booking)
     require(booking.status in QUEUE, "ALREADY_REVIEWED", "This booking has already been reviewed.", 409)
     require(booking.start > now, "PAST_SLOT", "This booking window has already started.", 409)
@@ -51,6 +52,7 @@ def review_booking(
 
 
 def flags(state: State, entry: Booking | AccessRequest, actor: User, now: datetime) -> list[dict[str, str]]:
+    """Identify deterministic risks relevant to an approval decision."""
     user = state.users[entry.user_id if isinstance(entry, Booking) else entry.requester_id]
     items = [
         state.equipment[i] for i in (entry.equipment_ids if isinstance(entry, AccessRequest) else [entry.equipment_id])
@@ -99,6 +101,7 @@ def review_access(
     hours: int | None,
     now: datetime,
 ) -> dict:
+    """Record an access decision and issue a grant when approved."""
     must_review(actor, state, entry)
     require(entry.status == "pending", "ALREADY_REVIEWED", "This request has already been reviewed.", 409)
     grant = None
@@ -135,6 +138,7 @@ def review_access(
 
 
 def approval_item(state: State, entry: AccessRequest | Booking, actor: User, now: datetime) -> dict:
+    """Build a review queue record with contextual details and flags."""
     is_booking = isinstance(entry, Booking)
     requester_id = entry.user_id if is_booking else entry.requester_id
     user = state.users[requester_id]

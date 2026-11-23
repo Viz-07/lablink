@@ -41,11 +41,13 @@ SYNONYMS = {
 
 
 def tokens(value: str) -> set[str]:
+    """Normalize search terms and expand known equipment synonyms."""
     parts = re.findall(r"[a-z0-9.]+", value.lower().replace("2.4 ghz", "2.4ghz"))
     return {SYNONYMS.get(word, word) for word in parts if len(word) >= 2}
 
 
 def rank(query: str, items: list[Equipment]) -> list[Hit]:
+    """Rank active catalogue items by weighted keyword matches."""
     needed = tokens(query)
     hits = []
     for item in items:
@@ -62,16 +64,20 @@ def rank(query: str, items: list[Equipment]) -> list[Hit]:
 
 
 def compact(item: Equipment) -> dict:
+    """Select the catalogue fields needed to ground the prompt."""
     return {"id": item.id, "name": item.name, "lab": item.lab_id, "tags": item.capability_tags, "specs": item.specs}
 
 
 class AIService:
+    """Coordinate bounded, cached Gemini requests and local fallbacks."""
+
     def __init__(self, client: GeminiClient | None = None) -> None:
         self.client = client
         self.cache: OrderedDict[str, tuple[float, BaseModel]] = OrderedDict()
         self.lock = Lock()
 
     def generate[T: BaseModel](self, instruction: str, payload: dict, fallback: T, ttl: int = 900) -> tuple[T, Source]:
+        """Return a typed Gemini result or the supplied fallback."""
         if self.client is None:
             return fallback, "fallback"
         prompt = json.dumps(payload, default=str, ensure_ascii=True, sort_keys=True)
@@ -101,6 +107,7 @@ class AIService:
         return result, "ai"
 
     def search(self, query: str, items: list[Equipment]) -> tuple[SearchResult, Source]:
+        """Find equipment from a shortlist of keyword-matched items."""
         ranked = rank(query, items)
         fallback = SearchResult(interpreted_need=query, hits=ranked[:8])
         if not ranked:
@@ -118,6 +125,7 @@ class AIService:
     def draft(
         self, project: Project, items: list[Equipment], chosen: list[Equipment], notes: str
     ) -> tuple[DraftResult, Source]:
+        """Suggest a project access justification and relevant equipment."""
         by_id = {item.id: item for item in items}
         ranked = rank(f"{project.title} {project.description}", items)
         candidates = list(dict.fromkeys([i.id for i in chosen] + [hit.equipment_id for hit in ranked[:12]]))
@@ -145,6 +153,7 @@ class AIService:
         return result.model_copy(update={"suggested_equipment": valid}), source
 
     def explain(self, item: Equipment, rows: list[AllocationRow]) -> tuple[Explanation, Source]:
+        """Explain the computed allocation and prepare participant messages."""
         messages = []
         winners = []
         data = []
@@ -186,6 +195,7 @@ class AIService:
         return result, source
 
     def summarize(self, item: dict) -> tuple[Summary, Source]:
+        """Summarize an approval request for its reviewer."""
         fallback = Summary(
             summary=(
                 f"{item['requester'].split()[0]} requests {item['hours']:g} hours on "
@@ -206,6 +216,7 @@ class AIService:
         )
 
     def insights(self, local: list[Insight]) -> tuple[InsightResult, Source]:
+        """Describe aggregate utilisation patterns and possible actions."""
         fallback = InsightResult(insights=local)
         result, source = self.generate(
             "Clarify supplied campus utilisation insights. Retain their equipment IDs and factual quantities.",
@@ -220,6 +231,7 @@ class AIService:
 
 
 def build_ai_service(settings: Settings) -> AIService:
+    """Configure Gemini when credentials and settings permit it."""
     if settings.ai_enabled and (settings.gcp_project or settings.ai_provider == "apikey"):
         try:
             return AIService(VertexGeminiClient(settings))

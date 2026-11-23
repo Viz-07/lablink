@@ -10,10 +10,12 @@ from .config import Settings
 
 
 def b64(value: bytes) -> str:
+    """Encode bytes as unpadded URL-safe Base64."""
     return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
 
 
 def decode(value: str) -> bytes:
+    """Decode and validate unpadded URL-safe Base64."""
     return base64.b64decode(value + "=" * (-len(value) % 4), altchars=b"-_", validate=True)
 
 
@@ -21,10 +23,12 @@ HEADER = b64(b'{"alg":"HS256","typ":"JWT"}')
 
 
 def signature(message: str, key: str) -> str:
+    """Compute the URL-safe HMAC-SHA256 signature of a message."""
     return b64(hmac.digest(key.encode(), message.encode(), hashlib.sha256))
 
 
 def new_token(settings: Settings, user: User) -> str:
+    """Issue a signed session token with an expiry."""
     now = int(time.time())
     body = b64(
         json.dumps(
@@ -43,6 +47,7 @@ def new_token(settings: Settings, user: User) -> str:
 
 
 def token_user(settings: Settings, token: str | None) -> str | None:
+    """Return the user identifier from a valid, unexpired session token."""
     if not token or len(token) > 2048:
         return None
     try:

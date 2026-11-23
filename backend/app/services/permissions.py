@@ -5,10 +5,12 @@ from ..repositories.base import State
 
 
 def supervises(user: User, state: State, item: Equipment) -> bool:
+    """Check whether a reviewer oversees the equipment's laboratory."""
     return user.role == Role.ADMIN or (user.role == Role.FACULTY and user.id in state.labs[item.lab_id].supervisor_ids)
 
 
 def can_review(user: User, state: State, record: Booking | AccessRequest) -> bool:
+    """Check whether the caller can review the booking or access request."""
     project = state.projects.get(record.project_id or "")
     if user.role == Role.ADMIN:
         return True
@@ -25,4 +27,5 @@ def can_review(user: User, state: State, record: Booking | AccessRequest) -> boo
 
 
 def must_review(user: User, state: State, record: Booking | AccessRequest) -> None:
+    """Enforce the caller's review scope for a booking or access request."""
     require(can_review(user, state, record), "FORBIDDEN", "This request is outside your review scope.", 403)

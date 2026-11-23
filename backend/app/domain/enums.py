@@ -2,12 +2,16 @@ from enum import StrEnum
 
 
 class Role(StrEnum):
+    """Define the supported user roles."""
+
     STUDENT = "student"
     FACULTY = "faculty"
     ADMIN = "lab_admin"
 
 
 class BookingStatus(StrEnum):
+    """Define the states a booking can occupy."""
+
     CONFIRMED = "confirmed"
     PENDING = "pending_approval"
     CONTESTED = "contested"
@@ -19,6 +23,8 @@ class BookingStatus(StrEnum):
 
 
 class ProjectType(StrEnum):
+    """Define the project categories used by scoring."""
+
     CAPSTONE = "capstone"
     RESEARCH = "research"
     COURSE = "course_lab"
@@ -27,6 +33,8 @@ class ProjectType(StrEnum):
 
 
 class Category(StrEnum):
+    """Define the supported equipment catalogue categories."""
+
     MEASUREMENT = "measurement"
     DEV_KIT = "dev_kit"
     WORKSTATION = "workstation"

@@ -18,16 +18,20 @@ BODY_LIMIT = 65536
 
 
 def error_data(code: str, message: str, request_id: str, details: object = None) -> dict:
+    """Build the standard JSON error envelope."""
     return {"error": {"code": code, "message": message, "details": details or {}, "request_id": request_id}}
 
 
 class Limiter:
+    """Track rate limit windows by action and subject."""
+
     def __init__(self) -> None:
         self.events: dict[tuple[str, str, int], deque[float]] = {}
         self.lock = Lock()
         self.last_cleanup = 0.0
 
     def allow(self, name: str, subject: str, rules: list[tuple[int, int]]) -> int:
+        """Record an allowed operation or return the retry delay in seconds."""
         now = monotonic()
         with self.lock:
             if now - self.last_cleanup > 60:
@@ -47,6 +51,8 @@ class Limiter:
 
 
 class SecurityMiddleware:
+    """Apply request limits, response headers, and structured logging."""
+
     def __init__(self, app: ASGIApp, settings: Settings) -> None:
         self.app, self.settings, self.limiter = app, settings, Limiter()
 
@@ -117,6 +123,7 @@ class SecurityMiddleware:
             )
 
     async def body(self, receive: Receive) -> bytes | None:
+        """Buffer a request body up to the configured byte limit."""
         data = bytearray()
         while True:
             chunk = await receive()
@@ -129,6 +136,7 @@ class SecurityMiddleware:
                 return bytes(data)
 
     def rate(self, scope: Scope, headers: Headers, path: str, method: str) -> int:
+        """Return the retry delay for a rate-limited API operation."""
         if path in {"/api/auth/personas", "/api/auth/demo", "/api/auth/logout"}:
             return self.limiter.allow("auth", (scope.get("client") or ("unknown",))[0], [(10, 60)])
         if method not in MUTATING and not path.endswith("/summary"):
@@ -140,6 +148,7 @@ class SecurityMiddleware:
         return self.limiter.allow("write", subject, [(60, 60)])
 
     def headers(self, headers: MutableHeaders, request_id: str, api: bool) -> None:
+        """Attach security, cache, and request tracing headers."""
         csp = (
             "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; "
             "connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"

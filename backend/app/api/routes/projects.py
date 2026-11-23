@@ -11,27 +11,32 @@ router = APIRouter(tags=["projects"])
 
 @router.get("/projects/mine")
 def mine(s: SignedIn) -> list[Project]:
+    """List projects visible to the signed-in user."""
     return my_projects(s.state, s.user)
 
 
 @router.post("/projects", status_code=201)
 def create(s: SignedIn, payload: ProjectCreate) -> Project:
+    """Create a project for the signed-in user."""
     return s.mutate(lambda state, user: save_project(state, user, payload.model_dump(), s.now))
 
 
 @router.patch("/projects/{key}")
 def update(s: SignedIn, key: Id, payload: ProjectUpdate) -> Project:
+    """Update a project the signed-in user owns."""
     changes = payload.model_dump(exclude_unset=True)
     return s.mutate(lambda state, user: save_project(state, user, changes, s.now, key))
 
 
 @router.get("/access-requests/mine")
 def requests(s: SignedIn) -> list[AccessRequest]:
+    """List the signed-in user's project access requests."""
     return [item for item in s.state.access_requests.values() if item.requester_id == s.user.id]
 
 
 @router.get("/access-grants/mine")
 def grants(s: SignedIn) -> list[dict]:
+    """List the signed-in user's project access grants."""
     return [
         {**g.model_dump(), "remaining_minutes": g.minutes_quota - g.minutes_used}
         for g in s.state.access_grants.values()
@@ -41,6 +46,7 @@ def grants(s: SignedIn) -> list[dict]:
 
 @router.post("/access-requests", status_code=201)
 def create_access(s: SignedIn, payload: AccessCreate) -> AccessRequest:
+    """Submit a request for project equipment access."""
     return s.mutate(
         lambda state, user: create_request(
             state,
@@ -58,4 +64,5 @@ def create_access(s: SignedIn, payload: AccessCreate) -> AccessRequest:
 
 @router.post("/access-requests/{key}/withdraw")
 def withdraw_access(s: SignedIn, key: Id) -> AccessRequest:
+    """Withdraw a pending project access request."""
     return s.mutate(lambda state, user: withdraw(state, user, find(state.access_requests, key, "Request"), s.now))

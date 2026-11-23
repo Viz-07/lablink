@@ -18,10 +18,12 @@ from ..repositories.base import SlotLock, State
 
 
 def lock_id(unit_id: str, start: datetime) -> str:
+    """Build the stable key for one unit and slot start."""
     return f"{unit_id}__{start:%Y%m%dT%H%M}"
 
 
 def free_units(state: State, item: Equipment, interval: Interval) -> list[str]:
+    """Find the equipment units free for an entire interval."""
     if item.status != "active":
         return []
     return [
@@ -32,18 +34,21 @@ def free_units(state: State, item: Equipment, interval: Interval) -> list[str]:
 
 
 def reserve(state: State, booking: Booking, unit_id: str) -> None:
+    """Create a lock for each slot covered by a confirmed booking."""
     for start in slots(booking.start, booking.end):
         key = lock_id(unit_id, start)
         state.slot_locks[key] = SlotLock(id=key, booking_id=booking.id, unit_id=unit_id, slot_start=start)
 
 
 def release(state: State, booking: Booking) -> None:
+    """Remove all slot locks belonging to a booking."""
     if booking.unit_id:
         for start in slots(booking.start, booking.end):
             state.slot_locks.pop(lock_id(booking.unit_id, start), None)
 
 
 def usage_in_week(state: State, user: User, item: Equipment, start: datetime, exclude: str | None = None) -> int:
+    """Count the user's booked minutes on the equipment during the campus week."""
     day = campus_date(start)
     monday = day - timedelta(days=day.weekday())
     window = Interval(start=at_local(monday), end=at_local(monday + timedelta(days=7)))
@@ -61,6 +66,7 @@ def usage_in_week(state: State, user: User, item: Equipment, start: datetime, ex
 def user_busy(
     state: State, user: User, interval: Interval, exclude: str | None = None, *, confirmed_only: bool = False
 ) -> bool:
+    """Check whether the user has a conflicting booking."""
     statuses = OCCUPIED if confirmed_only else ACTIVE
     return any(
         b.user_id == user.id and b.id != exclude and b.status in statuses and overlaps(b, interval)
@@ -69,6 +75,7 @@ def user_busy(
 
 
 def eligibility(user: User, item: Equipment) -> list[str]:
+    """Explain any equipment status or training barriers to booking."""
     reasons = []
     if item.status != "active":
         reasons.append("This item is currently unavailable.")
@@ -80,6 +87,7 @@ def eligibility(user: User, item: Equipment) -> list[str]:
 
 
 def availability(state: State, user: User, item: Equipment, start: date, days: int, now: datetime) -> dict:
+    """Build the daily availability slots and their display states."""
     lab = state.labs[item.lab_id]
     result = []
     for offset in range(days):
@@ -124,6 +132,7 @@ def free_windows(
     latest: datetime,
     exclude: str | None = None,
 ):
+    """Find candidate time windows with a free unit for the requested duration."""
     if eligibility(user, item) or duration > item.max_booking_minutes:
         return
     day = campus_date(earliest)
@@ -156,6 +165,7 @@ def suggest_slots(
     latest: datetime,
     part_of_day: str | None,
 ) -> list[dict]:
+    """Rank up to five available slots by timing, preference, and demand."""
     if earliest > latest:
         return []
     hours = {"morning": range(8, 12), "afternoon": range(12, 17), "evening": range(17, 20)}

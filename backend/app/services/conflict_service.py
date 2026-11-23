@@ -30,6 +30,7 @@ def groups(bookings: list[Booking]) -> list[list[Booking]]:
 
 
 def detect_conflicts(state: State, item: Equipment, now: datetime) -> None:
+    """Identify oversubscribed time windows and update conflict records."""
     queued = [b for b in state.bookings.values() if b.equipment_id == item.id and b.status in QUEUE and b.start >= now]
     previous = {c.id: c for c in state.conflicts.values() if c.status == "open" and c.equipment_id == item.id}
     seen = set()
@@ -61,6 +62,7 @@ def detect_conflicts(state: State, item: Equipment, now: datetime) -> None:
 
 
 def request_input(state: State, item: Equipment, booking: Booking, now: datetime) -> RequestInput:
+    """Compute the rank and feasibility inputs for a competing booking."""
     user = state.users[booking.user_id]
     project = state.projects.get(booking.project_id or "")
     days = (project.deadline - campus_date(booking.start)).days if project and project.deadline else None
@@ -151,6 +153,7 @@ def apply(
     horizon: int,
     overrides: list[tuple[str, str, str]],
 ) -> Conflict:
+    """Revalidate and apply a conflict allocation in the current state."""
     require(conflict.status == "open", "CONFLICT_CLOSED", "This conflict is already closed.", 409)
     require(conflict.recommendation, "RECOMMEND_FIRST", "Generate a recommendation before applying it.", 409)
     base = propose(state, conflict, now, horizon)
@@ -204,6 +207,7 @@ def apply(
 
 
 def promote_after_cancel(state: State, cancelled: Booking, now: datetime) -> None:
+    """Reconsider waiting requests after a booking is cancelled."""
     item = find(state.equipment, cancelled.equipment_id, "Equipment")
     contenders = [
         booking

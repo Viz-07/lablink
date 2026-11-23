@@ -7,20 +7,28 @@ from .enums import BookingStatus, Category, ProjectType, Role
 
 
 class Record(BaseModel):
+    """Provide a common identifier field for stored records."""
+
     id: str
 
 
 class Department(Record):
+    """Represent an academic department."""
+
     name: str
     code: str
 
 
 class Window(BaseModel):
+    """Represent a laboratory opening window in local time."""
+
     open: str
     close: str
 
 
 class Lab(Record):
+    """Represent a laboratory, its opening schedule, and supervisors."""
+
     name: str
     department_id: str
     building: str
@@ -32,6 +40,8 @@ class Lab(Record):
 
 
 class Equipment(Record):
+    """Represent a catalogue item and its booking and access rules."""
+
     name: str
     category: Category
     kind: Literal["equipment", "dev_kit", "workstation"]
@@ -52,6 +62,8 @@ class Equipment(Record):
 
 
 class User(Record):
+    """Represent a campus user and their role and certifications."""
+
     name: str
     role: Role = Role.STUDENT
     department_id: str
@@ -62,6 +74,8 @@ class User(Record):
 
 
 class Project(Record):
+    """Represent a student project, supervisor, type, and deadline."""
+
     owner_id: str
     member_ids: list[str] = Field(default_factory=list)
     title: str
@@ -73,6 +87,8 @@ class Project(Record):
 
 
 class AccessRequest(Record):
+    """Represent a student's request for equipment access for a project."""
+
     project_id: str
     requester_id: str
     equipment_ids: list[str]
@@ -88,6 +104,8 @@ class AccessRequest(Record):
 
 
 class AccessGrant(Record):
+    """Represent approved project access and its time allowance."""
+
     access_request_id: str
     user_id: str
     project_id: str
@@ -99,11 +117,15 @@ class AccessGrant(Record):
 
 
 class Interval(BaseModel):
+    """Represent a time span with a start and an end."""
+
     start: datetime
     end: datetime
 
 
 class Alternative(Interval):
+    """Describe a substitute time and equipment unit for a booking."""
+
     type: Literal["same_equipment_other_time", "equivalent_equipment"]
     equipment_id: str
     equipment_name: str
@@ -114,6 +136,8 @@ class Alternative(Interval):
 
 
 class Factor(BaseModel):
+    """Describe a scoring input, its weight, and its contribution."""
+
     label: str
     value: float
     weight: float
@@ -121,11 +145,15 @@ class Factor(BaseModel):
 
 
 class PriorityBreakdown(BaseModel):
+    """Store a priority score with the factors used to compute it."""
+
     score: float
     factors: dict[str, Factor]
 
 
 class Booking(Interval, Record):
+    """Represent an equipment booking through its scheduling lifecycle."""
+
     equipment_id: str
     unit_id: str | None = None
     user_id: str
@@ -145,6 +173,8 @@ class Booking(Interval, Record):
 
 
 class AllocationRow(BaseModel):
+    """Represent a ranked booking with its assignment or alternatives."""
+
     booking_id: str
     student: str
     project: str | None
@@ -155,6 +185,8 @@ class AllocationRow(BaseModel):
 
 
 class Conflict(Record):
+    """Represent competing booking requests and the allocation review state."""
+
     equipment_id: str
     window_start: datetime
     window_end: datetime
@@ -170,6 +202,8 @@ class Conflict(Record):
 
 
 class Notification(Record):
+    """Represent a user-facing event with a read state and link."""
+
     user_id: str
     type: str
     title: str
@@ -180,6 +214,8 @@ class Notification(Record):
 
 
 class AuditEntry(Record):
+    """Record who performed an audited action and when."""
+
     actor_id: str
     action: str
     target_type: str
@@ -189,4 +225,6 @@ class AuditEntry(Record):
 
 
 class DemandEvent(Interval, Record):
+    """Record a requested equipment interval for demand analytics."""
+
     equipment_id: str

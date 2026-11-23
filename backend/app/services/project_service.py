@@ -11,10 +11,12 @@ from .permissions import can_review
 
 
 def my_projects(state: State, user: User) -> list[Project]:
+    """List projects associated with the current user."""
     return [p for p in state.projects.values() if user.id in {p.owner_id, *p.member_ids}]
 
 
 def project_for(state: State, user: User, project_id: str) -> Project:
+    """Look up a project and require the user to be an owner or member."""
     project = find(state.projects, project_id, "Project")
     require(
         user.id in {project.owner_id, *project.member_ids}, "FORBIDDEN", "This project is outside your account.", 403
@@ -29,6 +31,7 @@ def save_project(
     now: datetime,
     project_id: str | None = None,
 ) -> Project:
+    """Validate and save a new or updated project."""
     if project_id:
         previous = find(state.projects, project_id, "Project")
         require(previous.owner_id == user.id, "FORBIDDEN", "Only the owner can edit the project.", 403)
@@ -59,6 +62,7 @@ def create_request(
     justification: str,
     now: datetime,
 ) -> AccessRequest:
+    """Create a pending project equipment access request."""
     project = project_for(state, user, project_id)
     require(campus_date(now) <= earliest <= latest, "INVALID_DATES", "Check the start and end dates.")
     require(
@@ -87,6 +91,7 @@ def create_request(
 
 
 def withdraw(state: State, user: User, entry: AccessRequest, now: datetime) -> AccessRequest:
+    """Withdraw a pending access request belonging to the user."""
     require(entry.requester_id == user.id, "FORBIDDEN", "Only the requester can withdraw this request.", 403)
     require(entry.status == "pending", "ALREADY_REVIEWED", "This request has already been reviewed.", 409)
     entry.status, entry.decided_at = "withdrawn", now

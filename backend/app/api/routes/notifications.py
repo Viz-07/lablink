@@ -8,6 +8,7 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 @router.get("")
 def listing(s: SignedIn) -> dict:
+    """List the signed-in user's notifications."""
     items = sorted(
         (n for n in s.state.notifications.values() if n.user_id == s.user.id), key=lambda n: n.created_at, reverse=True
     )
@@ -16,11 +17,14 @@ def listing(s: SignedIn) -> dict:
 
 @router.get("/unread-count")
 def count(s: SignedIn) -> dict[str, int]:
+    """Count unread notifications for the signed-in user."""
     return {"unread_count": sum(n.user_id == s.user.id and not n.read for n in s.state.notifications.values())}
 
 
 @router.post("/read", status_code=204)
 def mark(s: SignedIn, payload: ReadNotifications) -> Response:
+    """Mark selected notifications or all notifications as read."""
+
     def operation(state, user):
         for entry in state.notifications.values():
             if entry.user_id == user.id and (payload.ids == "all" or entry.id in payload.ids):

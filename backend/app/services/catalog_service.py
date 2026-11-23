@@ -11,6 +11,7 @@ from .availability_service import eligibility, free_windows
 
 
 def page[T](items: list[T], limit: int, cursor: str | None = None) -> dict:
+    """Return a cursor-based page from an ordered list."""
     if cursor and (not cursor.startswith("ll-") or not cursor[3:].isdigit() or len(cursor) > 12):
         raise AppError("BAD_CURSOR", "The page cursor is invalid.")
     offset = int(cursor[3:]) if cursor else 0
@@ -21,6 +22,7 @@ def page[T](items: list[T], limit: int, cursor: str | None = None) -> dict:
 
 
 def summary(state: State, user: User, item: Equipment, now: datetime) -> dict:
+    """Build the catalogue summary for a user and equipment item."""
     lab = state.labs[item.lab_id]
     match = next(free_windows(state, item, user, 30, now, now + timedelta(days=7)), None)
     return {
@@ -48,6 +50,7 @@ def list_equipment(
     limit: int,
     cursor: str | None,
 ) -> dict:
+    """Filter, sort, and paginate the equipment catalogue."""
     items = [
         item
         for item in state.equipment.values()

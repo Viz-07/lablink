@@ -6,10 +6,12 @@ from ..repositories.base import State
 
 
 def new_id(prefix: str) -> str:
+    """Generate an identifier with a resource-specific prefix."""
     return f"{prefix}_{token_hex(9)}"
 
 
 def notify(state: State, now: datetime, user: str, event: str, title: str, body: str, link: str) -> None:
+    """Add a notification for the specified user."""
     entry = Notification(id=new_id("nt"), user_id=user, type=event, title=title, body=body, link=link, created_at=now)
     state.notifications[entry.id] = entry
 
@@ -22,6 +24,7 @@ def audit(
     target: str,
     details: dict[str, str | int | float] | None = None,
 ) -> None:
+    """Append an audit entry for an action and its actor."""
     entry = AuditEntry(
         id=new_id("au"),
         actor_id=actor,

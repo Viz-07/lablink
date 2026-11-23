@@ -18,12 +18,15 @@ router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 
 def serialize(state: State, booking: Booking) -> dict:
+    """Attach related display information to a booking response."""
     item = state.equipment[booking.equipment_id]
     return {**booking.model_dump(), "equipment_name": item.name, "lab_name": state.labs[item.lab_id].name}
 
 
 @router.post("", status_code=201)
 def create(s: SignedIn, payload: BookingCreate) -> dict:
+    """Create a booking request for the signed-in user."""
+
     def operation(state, user):
         result = create_booking(
             state,
@@ -49,6 +52,8 @@ def mine(
     limit: PageLimit = 20,
     cursor: str | None = None,
 ) -> dict:
+    """List bookings belonging to the signed-in user."""
+
     def matches(booking: Booking) -> bool:
         if when == "action":
             return (booking.end > s.now and booking.status in {BookingStatus.CONTESTED, BookingStatus.REALLOCATED}) or (
@@ -77,6 +82,7 @@ def mine(
 
 @router.get("/{key}")
 def booking(s: SignedIn, key: Id) -> dict:
+    """Return a booking the caller is allowed to view."""
     entry = find(s.state.bookings, key, "Booking")
     require(
         s.user.id == entry.user_id or can_review(s.user, s.state, entry),
@@ -89,6 +95,7 @@ def booking(s: SignedIn, key: Id) -> dict:
 
 @router.post("/{key}/cancel")
 def cancel(s: SignedIn, key: Id, payload: Cancel | None = None) -> dict:
+    """Cancel a booking on behalf of an authorized caller."""
     return s.mutate(
         lambda state, user: serialize(state, cancel_booking(state, user, find(state.bookings, key, "Booking"), s.now))
     )
@@ -96,6 +103,8 @@ def cancel(s: SignedIn, key: Id, payload: Cancel | None = None) -> dict:
 
 @router.post("/{key}/accept-alternative", status_code=201)
 def accept(s: SignedIn, key: Id, payload: Selection) -> dict:
+    """Accept one of the booking's proposed alternatives."""
+
     def operation(state, user):
         result = accept_alternative(state, user, find(state.bookings, key, "Booking"), payload.index, s.now, s.horizon)
         return serialize(state, result) if isinstance(result, Booking) else result

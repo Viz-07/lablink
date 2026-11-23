@@ -12,6 +12,7 @@ router = APIRouter(prefix="/ai", tags=["AI"])
 
 @router.post("/search")
 def search(s: SignedIn, payload: Search) -> dict:
+    """Return natural-language equipment search results."""
     items = list(s.state.equipment.values())
     result, source = s.ctx.ai.search(payload.query, items)
     hits = [
@@ -26,6 +27,7 @@ def search(s: SignedIn, payload: Search) -> dict:
 
 @router.post("/draft-access-request")
 def draft(s: SignedIn, payload: Draft) -> dict:
+    """Draft an access request for a project the caller belongs to."""
     project = project_for(s.state, s.user, payload.project_id)
     items = list(s.state.equipment.values())
     chosen = [find(s.state.equipment, key, "Equipment") for key in dict.fromkeys(payload.equipment_ids)]
@@ -42,6 +44,7 @@ def draft(s: SignedIn, payload: Draft) -> dict:
 
 @router.post("/insights")
 def insights(s: Reviewer, payload: Insights) -> dict:
+    """Summarize utilisation data in the reviewer's scope."""
     data = overview(s.state, s.user, s.now, payload.range_days)
     result, source = s.ctx.ai.insights(local_insights(data))
     return {**result.model_dump(), "source": source}

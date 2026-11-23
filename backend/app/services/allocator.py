@@ -7,6 +7,8 @@ from ..domain.timeslots import overlaps
 
 @dataclass(frozen=True)
 class RequestInput:
+    """Represent a booking's rank and feasibility inputs for allocation."""
+
     id: str
     user_id: str
     interval: Interval
@@ -17,6 +19,8 @@ class RequestInput:
 
 @dataclass(frozen=True)
 class Placement:
+    """Pair an allocation request with a unit or a rejection reason."""
+
     request: RequestInput
     unit_id: str | None
     reason: str | None

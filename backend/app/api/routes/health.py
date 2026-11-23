@@ -7,6 +7,7 @@ router = APIRouter(tags=["health"])
 
 @router.get("/healthz")
 def health(ctx: Ctx) -> dict:
+    """Report the API status, storage mode, and configured AI model."""
     return {
         "status": "ok",
         "version": "1.0.0",
@@ -18,5 +19,6 @@ def health(ctx: Ctx) -> dict:
 
 @router.get("/readyz")
 def ready(ctx: Ctx) -> dict[str, str]:
+    """Check repository access before reporting readiness."""
     ctx.repo.read()
     return {"status": "ready"}

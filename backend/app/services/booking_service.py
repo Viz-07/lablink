@@ -27,6 +27,7 @@ def create_booking(
     *,
     replacement: bool = False,
 ) -> Booking | AppError:
+    """Validate a booking request and confirm or queue it as appropriate."""
     item = find(state.equipment, equipment_id, "Equipment")
     if project_id:
         project = find(state.projects, project_id, "Project")
@@ -87,6 +88,7 @@ def create_booking(
 
 
 def cancel_booking(state: State, user: User, booking: Booking, now: datetime) -> Booking:
+    """Cancel an eligible booking and reconsider its conflict queue."""
     require(user.id == booking.user_id or user.role == Role.ADMIN, "FORBIDDEN", "You cannot cancel this booking.", 403)
     require(
         booking.status in ACTIVE | {BookingStatus.REALLOCATED}, "CANNOT_CANCEL", "This booking is already closed.", 409
@@ -110,6 +112,7 @@ def cancel_booking(state: State, user: User, booking: Booking, now: datetime) ->
 def accept_alternative(
     state: State, user: User, booking: Booking, index: int, now: datetime, horizon: int
 ) -> Booking | AppError:
+    """Confirm a proposed substitute after rechecking its availability."""
     require(booking.user_id == user.id, "FORBIDDEN", "Only the requester can accept this option.", 403)
     require(
         booking.status == BookingStatus.REALLOCATED,

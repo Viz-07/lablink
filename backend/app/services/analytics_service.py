@@ -10,16 +10,19 @@ from .permissions import supervises
 
 
 def percent(value: float, total: float) -> float:
+    """Express a ratio as a percentage."""
     return round(100 * value / total, 1) if total else 0.0
 
 
 def duration(booking: Interval, window: Interval) -> int:
+    """Measure the overlap between a booking and a reporting window."""
     return minutes(Interval(start=max(window.start, booking.start), end=min(window.end, booking.end)))
 
 
 def overview(
     state: State, actor: User, now: datetime, days: int, department: str | None = None, lab: str | None = None
 ) -> dict:
+    """Aggregate booking, demand, and utilisation statistics for a reporting range."""
     first = campus_date(now) - timedelta(days=days - 1)
     window = Interval(start=at_local(first), end=now)
     visible = [
@@ -92,11 +95,13 @@ def overview(
 
 
 def no_show(bookings: list[Booking]) -> float:
+    """Calculate the percentage of completed or missed bookings marked as no-shows."""
     finished = [b for b in bookings if b.status in {BookingStatus.COMPLETED, BookingStatus.NO_SHOW}]
     return percent(sum(b.status == BookingStatus.NO_SHOW for b in finished), len(finished))
 
 
 def local_insights(data: dict) -> list[Insight]:
+    """Derive utilisation insights deterministically from the aggregate data."""
     equipment = data["by_equipment"]
     ideas = []
     for row in sorted(equipment, key=lambda r: -r["demand_ratio"]):

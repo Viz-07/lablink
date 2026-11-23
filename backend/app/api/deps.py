@@ -17,6 +17,8 @@ from ..repositories.base import Repository, State
 
 @dataclass
 class Context:
+    """Collect application dependencies and the current time for a request."""
+
     settings: Settings
     repo: Repository
     ai: AIService
@@ -24,6 +26,7 @@ class Context:
 
 
 def context(request: Request) -> Context:
+    """Resolve the application dependencies from the current request."""
     clock = cast(Clock, request.app.state.clock)
     return Context(request.app.state.settings, request.app.state.repo, request.app.state.ai, clock.now())
 
@@ -32,6 +35,8 @@ Ctx = Annotated[Context, Depends(context)]
 
 
 class Session:
+    """Represent a signed-in user and the request's repository snapshot."""
+
     def __init__(self, ctx: Context, user_id: str, state: State) -> None:
         self.ctx, self.state, self.user = ctx, state, self._get_user(state, user_id)
         self.now, self.horizon = ctx.now, ctx.settings.booking_horizon_days
@@ -43,6 +48,7 @@ class Session:
         return state.users[user_id]
 
     def mutate[T](self, operation: Callable[[State, User], T | AppError]) -> T:
+        """Run a transaction with the user's current record."""
         result = self.ctx.repo.transact(lambda state: operation(state, self._get_user(state, self.user.id)))
         if isinstance(result, AppError):
             raise result
@@ -50,6 +56,7 @@ class Session:
 
 
 def session(request: Request, ctx: Ctx) -> Session:
+    """Resolve a valid session cookie to a current user."""
     user_id = token_user(ctx.settings, request.cookies.get("ll_session"))
     if not user_id:
         raise AppError("UNAUTHORIZED", "Sign in to continue.", 401)
@@ -57,11 +64,13 @@ def session(request: Request, ctx: Ctx) -> Session:
 
 
 def reviewer(session: Annotated[Session, Depends(session)]) -> Session:
+    """Require faculty or administrator access."""
     require(session.user.role in {Role.FACULTY, Role.ADMIN}, "FORBIDDEN", "Faculty access required.", 403)
     return session
 
 
 def admin(session: Annotated[Session, Depends(session)]) -> Session:
+    """Require laboratory administrator access."""
     require(session.user.role == Role.ADMIN, "FORBIDDEN", "Lab administrator access required.", 403)
     return session
 

@@ -10,6 +10,7 @@ def valid_grant(
     project_id: str | None,
     interval: Interval,
 ) -> AccessGrant | None:
+    """Find a grant that covers the user, project, equipment, and interval."""
     return next(
         (
             g

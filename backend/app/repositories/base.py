@@ -21,6 +21,8 @@ from ..domain.models import (
 
 
 class SlotLock(BaseModel):
+    """Associate one equipment unit and half-hour slot with a booking."""
+
     id: str
     booking_id: str
     unit_id: str
@@ -28,6 +30,8 @@ class SlotLock(BaseModel):
 
 
 class State(BaseModel):
+    """Represent a snapshot of LabLink's stored collections."""
+
     departments: dict[str, Department] = Field(default_factory=dict)
     labs: dict[str, Lab] = Field(default_factory=dict)
     equipment: dict[str, Equipment] = Field(default_factory=dict)
@@ -47,6 +51,12 @@ COLLECTIONS = tuple(State.model_fields)
 
 
 class Repository(Protocol):
-    def read(self) -> State: ...
+    """Define the snapshot reads and atomic mutations used by services."""
 
-    def transact[T](self, operation: Callable[[State], T]) -> T: ...
+    def read(self) -> State:
+        """Return a consistent snapshot of the stored state."""
+        ...
+
+    def transact[T](self, operation: Callable[[State], T]) -> T:
+        """Apply an operation atomically and return its result."""
+        ...

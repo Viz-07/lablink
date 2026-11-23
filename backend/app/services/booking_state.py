@@ -11,6 +11,7 @@ from .events import notify
 
 
 def feasibility(state: State, item: Equipment, user: User, booking: Booking, now: datetime) -> tuple[str, str] | None:
+    """Return the first booking rule violation, if any."""
     project = state.projects.get(booking.project_id or "")
     if booking.start < now:
         return "PAST_SLOT", "Choose a time in the future."
@@ -35,6 +36,7 @@ def feasibility(state: State, item: Equipment, user: User, booking: Booking, now
 
 
 def confirm(state: State, booking: Booking, unit: str, now: datetime, actor: str | None = None) -> None:
+    """Confirm a booking, reserve its slots, and notify the user."""
     item, user = state.equipment[booking.equipment_id], state.users[booking.user_id]
     require(unit in free_units(state, item, booking), "SLOT_UNAVAILABLE", "The slot is no longer available.", 409)
     grant = valid_grant(state, user, item, booking.project_id, booking)
@@ -48,6 +50,7 @@ def confirm(state: State, booking: Booking, unit: str, now: datetime, actor: str
 
 
 def cancel(state: State, booking: Booking, now: datetime) -> None:
+    """Cancel a booking and release its slot locks and grant usage."""
     release(state, booking)
     if grant := state.access_grants.get(booking.grant_id or ""):
         grant.minutes_used = max(0, grant.minutes_used - minutes(booking))

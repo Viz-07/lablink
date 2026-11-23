@@ -10,11 +10,13 @@ class AppError(Exception):
 
 
 def require(condition: object, code: str, message: str, status: int = 422) -> None:
+    """Raise an application error when a required condition fails."""
     if not condition:
         raise AppError(code, message, status)
 
 
 def find[T](collection: dict[str, T], key: str | None, label: str) -> T:
+    """Look up a record or raise an application not-found error."""
     if key is None or key not in collection:
         raise AppError("NOT_FOUND", f"{label} could not be found.", 404)
     return collection[key]

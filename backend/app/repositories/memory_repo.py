@@ -12,10 +12,12 @@ class InMemoryRepository:
         self._lock = RLock()
 
     def read(self) -> State:
+        """Copy the current state while holding the repository lock."""
         with self._lock:
             return self._state.model_copy(deep=True)
 
     def transact[T](self, operation: Callable[[State], T]) -> T:
+        """Apply an operation to a working copy and publish it on success."""
         with self._lock:
             working = self._state.model_copy(deep=True)
             result = operation(working)

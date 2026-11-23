@@ -16,6 +16,7 @@ Kind = Literal["booking", "access"]
 
 
 def get_entry(state: State, kind: Kind, key: str) -> Booking | AccessRequest:
+    """Look up a booking or access request by approval kind and identifier."""
     return (
         find(state.bookings, key, "Booking")
         if kind == "booking"
@@ -27,6 +28,7 @@ def get_entry(state: State, kind: Kind, key: str) -> Booking | AccessRequest:
 def items(
     s: Reviewer, type: Literal["booking", "access", "all"] = "all", status: Literal["pending"] = "pending"
 ) -> list[dict]:
+    """List approvals in the current reviewer's scope."""
     pending: list[Booking | AccessRequest] = []
     if type != "access":
         pending.extend(b for b in s.state.bookings.values() if b.status in QUEUE and b.start >= s.now)
@@ -41,6 +43,7 @@ def items(
 
 @router.get("/{kind}/{key}/summary")
 def summary(s: Reviewer, kind: Kind, key: Id) -> dict:
+    """Return a reviewer summary with deterministic risk flags."""
     entry = get_entry(s.state, kind, key)
     must_review(s.user, s.state, entry)
     item = approval_item(s.state, entry, s.user, s.now)
@@ -50,6 +53,8 @@ def summary(s: Reviewer, kind: Kind, key: Id) -> dict:
 
 @router.post("/{kind}/{key}/{action}")
 def decision(s: Reviewer, kind: Kind, key: Id, action: Literal["approve", "decline"], payload: Decision) -> dict:
+    """Approve or decline a booking or project access request."""
+
     def operation(state, user):
         entry = get_entry(state, kind, key)
         if isinstance(entry, Booking):

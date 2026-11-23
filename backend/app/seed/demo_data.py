@@ -81,6 +81,7 @@ def seed(state: State, now: datetime, *, reset: bool = False) -> None:
 
 
 def seed_projects(state: State, now: datetime) -> None:
+    """Populate the example projects and access records."""
     today = campus_date(now)
     projects = [
         (
@@ -177,6 +178,7 @@ def seed_projects(state: State, now: datetime) -> None:
 
 def seed_history(state: State, now: datetime) -> None:
     # Seeded PRNG keeps the demo history reproducible; it is never used for security.
+    """Generate seeded booking history for the utilisation dashboard."""
     rng = Random(42)  # noqa: S311  # nosec B311
     keys = [key for key in state.equipment if key not in {"eq-spectrum-keysight", "eq-spectrum-rs"}]
     slots_used = set()
@@ -224,6 +226,7 @@ def seed_history(state: State, now: datetime) -> None:
 
 
 def demo_conflict(state: State, now: datetime, key: str, equipment_id: str, people: list[str]) -> None:
+    """Create the competing requests for the conflict-review demo."""
     day = campus_date(now) + timedelta(days=1)
     item = state.equipment[equipment_id]
     while not opening(state.labs[item.lab_id], day):

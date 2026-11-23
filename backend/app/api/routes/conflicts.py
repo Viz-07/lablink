@@ -16,6 +16,7 @@ router = APIRouter(prefix="/conflicts", tags=["conflicts"])
 
 
 def scoped(state: State, user: User, key: str) -> Conflict:
+    """Fetch a conflict and enforce the reviewer's scope."""
     conflict = find(state.conflicts, key, "Conflict")
     require(
         supervises(user, state, state.equipment[conflict.equipment_id]),
@@ -27,6 +28,7 @@ def scoped(state: State, user: User, key: str) -> Conflict:
 
 
 def serialize(s: Reviewer, state: State, item: Conflict, *, detail: bool = False) -> dict:
+    """Build the list or detail representation of a conflict."""
     equipment = state.equipment[item.equipment_id]
     result = {
         **item.model_dump(),
@@ -54,6 +56,8 @@ def serialize(s: Reviewer, state: State, item: Conflict, *, detail: bool = False
 def listing(
     s: Reviewer, status: Literal["open", "resolved", "dismissed"] = "open", refresh: bool = False
 ) -> list[dict]:
+    """List conflicts in scope and refresh detection when requested."""
+
     def collect(state, user):
         if refresh:
             for equipment in state.equipment.values():
@@ -72,11 +76,13 @@ def listing(
 
 @router.get("/{key}")
 def detail(s: Reviewer, key: Id) -> dict:
+    """Return the detailed conflict view for an authorized reviewer."""
     return serialize(s, s.state, scoped(s.state, s.user, key), detail=True)
 
 
 @router.post("/{key}/recommend")
 def recommend(s: Reviewer, key: Id) -> dict:
+    """Store a deterministic proposal with explanatory text."""
     conflict = scoped(s.state, s.user, key)
     require(conflict.status == "open", "CONFLICT_CLOSED", "This conflict is already closed.", 409)
     rows = propose(s.state, conflict, s.now, s.horizon)
@@ -99,6 +105,7 @@ def recommend(s: Reviewer, key: Id) -> dict:
 
 @router.post("/{key}/apply")
 def apply_allocation(s: Reviewer, key: Id, payload: Apply | None = None) -> dict:
+    """Apply the allocation and any validated override."""
     overrides = [(entry.promote, entry.demote, entry.reason) for entry in payload.overrides] if payload else []
     return s.mutate(
         lambda state, user: serialize(
@@ -112,6 +119,8 @@ def apply_allocation(s: Reviewer, key: Id, payload: Apply | None = None) -> dict
 
 @router.post("/{key}/dismiss")
 def dismiss(s: Admin, key: Id, payload: Reason) -> dict:
+    """Dismiss a conflict and record the administrator's reason."""
+
     def operation(state, user):
         conflict = scoped(state, user, key)
         require(conflict.status == "open", "CONFLICT_CLOSED", "This conflict is already closed.", 409)

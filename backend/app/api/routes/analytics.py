@@ -16,6 +16,7 @@ def analytics(
     department_id: Id | None = None,
     lab_id: Id | None = None,
 ) -> dict:
+    """Return equipment and campus utilisation metrics for the selected range."""
     from ...core.errors import require
 
     require(range_days in {7, 14, 30}, "INVALID_RANGE", "Choose a 7, 14 or 30 day range.")

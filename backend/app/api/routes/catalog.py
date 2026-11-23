@@ -18,16 +18,19 @@ PageLimit = Annotated[int, Query(ge=1, le=100)]
 
 @router.get("/departments")
 def departments(s: SignedIn) -> list[Department]:
+    """List the departments represented in the catalogue."""
     return list(s.state.departments.values())
 
 
 @router.get("/labs")
 def labs(s: SignedIn, department_id: Id | None = None) -> list[Lab]:
+    """List the laboratories available in the catalogue."""
     return [lab for lab in s.state.labs.values() if not department_id or lab.department_id == department_id]
 
 
 @router.get("/faculty")
 def faculty(s: SignedIn) -> list[dict[str, str]]:
+    """List faculty members who can supervise a project."""
     return [
         {"id": u.id, "name": u.name, "department": u.department_id.upper()}
         for u in s.state.users.values()
@@ -48,6 +51,7 @@ def equipment(
     limit: PageLimit = 20,
     cursor: str | None = None,
 ) -> dict:
+    """Return a filtered and paginated equipment catalogue."""
     return list_equipment(
         s.state,
         s.user,
@@ -66,6 +70,7 @@ def equipment(
 
 @router.get("/equipment/{key}")
 def detail(s: SignedIn, key: Id) -> dict:
+    """Return equipment details and rules for the signed-in user."""
     item = find(s.state.equipment, key, "Equipment")
     reasons = eligibility(s.user, item)
     return {
@@ -82,6 +87,7 @@ def equipment_availability(
     start: Annotated[date | None, Query(alias="from")] = None,
     days: Annotated[int, Query(ge=1, le=14)] = 14,
 ) -> dict:
+    """Return the requested number of days of slot availability."""
     item = find(s.state.equipment, key, "Equipment")
     day = start or campus_date(s.now)
     today = campus_date(s.now)
@@ -102,6 +108,7 @@ def equipment_suggest(
     latest: date | None = None,
     part_of_day: Literal["morning", "afternoon", "evening"] | None = None,
 ) -> dict:
+    """Suggest feasible slots for a requested duration and time range."""
     item = find(s.state.equipment, key, "Equipment")
     start = max(s.now, at_local(earliest)) if earliest else s.now
     horizon = s.now + timedelta(days=s.horizon)

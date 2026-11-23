@@ -10,11 +10,13 @@ from .availability_service import free_windows
 
 
 def similarity(a: Equipment, b: Equipment) -> float:
+    """Calculate the Jaccard similarity of two equipment tag sets."""
     left, right = set(a.capability_tags), set(b.capability_tags)
     return len(left & right) / max(1, len(left | right))
 
 
 def utilisation(state: State, item: Equipment, now: datetime) -> float:
+    """Estimate an equipment item's recent occupied share of opening capacity."""
     start = now - timedelta(days=14)
     capacity = sum(
         minutes(window)
@@ -36,6 +38,7 @@ def find_alternatives(
     now: datetime,
     horizon: int = 14,
 ) -> list[Alternative]:
+    """Rank feasible substitute slots and return up to three options."""
     original = state.equipment[booking.equipment_id]
     project = state.projects.get(booking.project_id or "")
     deadline = (

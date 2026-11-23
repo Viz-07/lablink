@@ -30,6 +30,8 @@ class FirestoreRepository:
         )
 
     def read(self) -> State:
+        """Read a consistent snapshot of the collections in Firestore."""
+
         @self._sdk.transactional
         def snapshot(transaction: Any) -> State:
             return self._load(transaction)
@@ -37,6 +39,8 @@ class FirestoreRepository:
         return snapshot(self._client.transaction(read_only=True))
 
     def transact[T](self, operation: Callable[[State], T]) -> T:
+        """Apply and persist a state transition in a Firestore transaction."""
+
         @self._sdk.transactional
         def update(transaction: Any) -> T:
             revision = self._revision.get(transaction=transaction).to_dict() or {}

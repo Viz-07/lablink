@@ -9,7 +9,11 @@ MAX_OUTPUT_TOKENS = 2048
 
 
 class GeminiClient(Protocol):
-    def generate[T: BaseModel](self, system: str, prompt: str, schema: type[T]) -> T: ...
+    """Define the interface for structured Gemini responses."""
+
+    def generate[T: BaseModel](self, system: str, prompt: str, schema: type[T]) -> T:
+        """Generate a response conforming to the supplied schema."""
+        ...
 
 
 class VertexGeminiClient:
@@ -32,6 +36,7 @@ class VertexGeminiClient:
         self.model = settings.gemini_model
 
     def generate[T: BaseModel](self, system: str, prompt: str, schema: type[T]) -> T:
+        """Request structured JSON from Gemini and validate the response."""
         from google.genai import types
 
         response = self._client.models.generate_content(
