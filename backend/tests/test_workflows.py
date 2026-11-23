@@ -20,6 +20,22 @@ def test_student_cannot_resolve_conflicts(client: TestClient) -> None:
     assert client.post("/api/conflicts/cf-demo-spectrum/apply", json={}, headers=CSRF).status_code == 403
 
 
+def test_conflict_winner_can_find_confirmed_booking(client: TestClient) -> None:
+    login(client, "u-meera")
+    recommendation = client.post("/api/conflicts/cf-demo-spectrum/recommend", headers=CSRF).json()["recommendation"]
+    winner = next(row for row in recommendation if row["unit_id"])
+    assert winner["student"] == "Aarav Shetty"
+    assert client.post("/api/conflicts/cf-demo-spectrum/apply", json={}, headers=CSRF).status_code == 200
+
+    login(client, "u-aarav")
+    upcoming = client.get("/api/bookings/mine?when=upcoming").json()["items"]
+    booking = next(item for item in upcoming if item["id"] == winner["booking_id"])
+    assert booking["status"] == "confirmed"
+    assert booking["conflict_id"] == "cf-demo-spectrum"
+    action = client.get("/api/bookings/mine?when=action").json()["items"]
+    assert not any(item["id"] == booking["id"] for item in action)
+
+
 def test_loser_accepts_alternative(client: TestClient) -> None:
     login(client, "u-meera")
     client.post("/api/conflicts/cf-demo-spectrum/recommend", headers=CSRF)

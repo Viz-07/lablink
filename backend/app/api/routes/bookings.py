@@ -66,7 +66,9 @@ def mine(
                 BookingStatus.COMPLETED,
                 BookingStatus.NO_SHOW,
             }
-        return booking.end > s.now and booking.status in ACTIVE and not booking.conflict_id
+        return booking.end > s.now and (
+            booking.status == BookingStatus.CONFIRMED or (booking.status in ACTIVE and not booking.conflict_id)
+        )
 
     entries = sorted(
         (
@@ -77,7 +79,8 @@ def mine(
         key=lambda b: b.start,
         reverse=when == "past",
     )
-    return page([serialize(s.state, booking) for booking in entries], limit, cursor)
+    listing = page(entries, limit, cursor)
+    return {**listing, "items": [serialize(s.state, booking) for booking in listing["items"]]}
 
 
 @router.get("/{key}")

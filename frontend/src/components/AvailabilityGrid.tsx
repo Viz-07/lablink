@@ -2,7 +2,11 @@ import { useId, useState, type KeyboardEvent } from 'react';
 import type { Day, Interval, Slot } from '../api/types';
 import { date, range, time } from '../format';
 
-const marks = { free: '○', partial: '◐', full: '×', closed: '–', past: '–', mine: '★' };
+const marks = { free: '○', partial: '◐', full: '×', closed: '–', past: '–', mine: '★', outside_horizon: '–' };
+function slotLabel(slot: Slot) {
+  if (selectable(slot)) return slot.free_units + ' of ' + slot.total_units + ' units free';
+  return slot.state === 'outside_horizon' ? 'outside the booking window' : slot.state;
+}
 export function selectable(slot: Slot) { return slot.state === 'free' || slot.state === 'partial'; }
 
 export default function AvailabilityGrid({ days, selected, onSelect, duration }: {
@@ -70,14 +74,14 @@ export default function AvailabilityGrid({ days, selected, onSelect, duration }:
               return <td key={day.date} role="gridcell" aria-selected={chosen}><button
                 id={id + '-' + row + '-' + col} type="button" className={'slot ' + slot.state}
                 aria-disabled={!selectable(slot)} tabIndex={active[0] === row && active[1] === col ? 0 : -1}
-                aria-label={range(slot) + ', ' + (selectable(slot) ? slot.free_units + ' of ' + slot.total_units + ' units free' : slot.state)}
+                aria-label={range(slot) + ', ' + slotLabel(slot)}
                 onFocus={() => setActive([row, col])} onKeyDown={event => key(event, row, col)}
                 onClick={event => pick(row, col, event.shiftKey)}>{chosen ? '✓' : marks[slot.state]}</button></td>;
             })}
           </tr>)}</tbody>
         </table>
       </div>
-      <div className="legend"><span>○ Free</span><span>◐ Partly booked</span><span>× Full</span><span>★ My booking</span><span>– Closed or past</span></div>
+      <div className="legend"><span>○ Free</span><span>◐ Partly booked</span><span>× Full</span><span>★ My booking</span><span>– Closed, past, or outside the booking window</span></div>
     </>}
     <div className="selection" role="status">{selected ? <><strong>Selected slot</strong><time dateTime={selected.start}>{range(selected)}</time><button type="button" className="text-button" onClick={() => { onSelect(); setAnchor(undefined); }}>Clear selection</button></> : 'Select a start time or choose a suggested slot.'}</div>
   </>;

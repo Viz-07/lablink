@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from datetime import date, datetime, timedelta
 
 from ..domain.constants import ACTIVE, OCCUPIED, SLOT_MINUTES
@@ -12,7 +13,6 @@ from ..domain.timeslots import (
     opening,
     overlaps,
     slots,
-    within_hours,
 )
 from ..repositories.base import SlotLock, State
 
@@ -86,7 +86,9 @@ def eligibility(user: User, item: Equipment) -> list[str]:
     return reasons
 
 
-def availability(state: State, user: User, item: Equipment, start: date, days: int, now: datetime) -> dict:
+def availability(
+    state: State, user: User, item: Equipment, start: date, days: int, now: datetime, horizon: datetime
+) -> dict:
     """Build the daily availability slots and their display states."""
     lab = state.labs[item.lab_id]
     result = []
@@ -96,8 +98,8 @@ def availability(state: State, user: User, item: Equipment, start: date, days: i
         cells = []
         for time in slots(at_local(day, "08:00"), at_local(day, "20:00")):
             interval = Interval(start=time, end=time + STEP)
-            open_slot = within_hours(lab, interval)
-            free = free_units(state, item, interval) if open_slot else []
+            open_slot = any(window.start <= interval.start and interval.end <= window.end for window in windows)
+            free = free_units(state, item, interval) if open_slot and interval.end <= horizon else []
             mine = any(
                 state.bookings[lock.booking_id].user_id == user.id
                 for unit in item.unit_ids
@@ -106,6 +108,8 @@ def availability(state: State, user: User, item: Equipment, start: date, days: i
             status = (
                 "past"
                 if time < now
+                else "outside_horizon"
+                if interval.end > horizon
                 else "closed"
                 if not open_slot
                 else "mine"
@@ -131,12 +135,20 @@ def free_windows(
     earliest: datetime,
     latest: datetime,
     exclude: str | None = None,
-):
+) -> Iterator[tuple[Interval, str]]:
     """Find candidate time windows with a free unit for the requested duration."""
     if eligibility(user, item) or duration > item.max_booking_minutes:
         return
+    busy = [
+        booking
+        for booking in state.bookings.values()
+        if booking.user_id == user.id and booking.id != exclude and booking.status in ACTIVE
+    ]
     day = campus_date(earliest)
-    while day <= campus_date(latest):
+    last_day = campus_date(latest)
+    remaining_by_week: dict[date, int] = {}
+    while day <= last_day:
+        monday = day - timedelta(days=day.weekday())
         for window in opening(state.labs[item.lab_id], day):
             for start in slots(ceil_slot(max(earliest, window.start)), min(latest, window.end)):
                 end = start + timedelta(minutes=duration)
@@ -144,14 +156,13 @@ def free_windows(
                     break
                 interval = Interval(start=start, end=end)
                 units = free_units(state, item, interval)
-                if (
-                    units
-                    and not user_busy(state, user, interval, exclude)
-                    and (
-                        usage_in_week(state, user, item, start, exclude) + duration
-                        <= item.weekly_limit_minutes_per_user
+                if not units or any(overlaps(booking, interval) for booking in busy):
+                    continue
+                if monday not in remaining_by_week:
+                    remaining_by_week[monday] = item.weekly_limit_minutes_per_user - usage_in_week(
+                        state, user, item, start, exclude
                     )
-                ):
+                if duration <= remaining_by_week[monday]:
                     yield interval, units[0]
         day += timedelta(days=1)
 

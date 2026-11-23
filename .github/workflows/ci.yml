@@ -15,7 +15,13 @@ jobs:
       - run: ruff format --check .
       - run: bandit -q -r app
       - run: pip-audit -r requirements.txt
-      - run: pytest
+      - run: pytest --junitxml="$RUNNER_TEMP/lablink-backend.xml"
+      - name: Upload backend test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: ${{ runner.temp }}/lablink-backend.xml
   frontend:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: frontend } }
@@ -25,6 +31,37 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
       - run: npm ci
       - run: npm run typecheck
-      - run: npm test
+      - run: npm test -- --reporter=default --reporter=junit --outputFile.junit="$RUNNER_TEMP/lablink-frontend.xml"
+      - name: Upload frontend test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-results
+          path: ${{ runner.temp }}/lablink-frontend.xml
       - run: npm run build
-      - run: npm audit --omit=dev --audit-level=high
+      - run: npm audit --audit-level=high
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t lablink-ci .
+      - name: Smoke test the production image
+        shell: bash
+        run: |
+          set -euo pipefail
+          session_secret=$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')
+          container=$(docker run --detach --publish 127.0.0.1:8080:8080 \
+            --env AI_ENABLED=false --env SESSION_SECRET="$session_secret" lablink-ci)
+          trap 'docker logs "$container"; docker rm --force "$container" >/dev/null' EXIT
+          base=http://127.0.0.1:8080
+          curl --fail --silent --show-error --retry 15 --retry-all-errors --retry-max-time 40 \
+            "$base/api/healthz" | python3 -c 'import json, sys; assert json.load(sys.stdin)["status"] == "ok"'
+          curl --fail --silent --show-error "$base/discover" --output /tmp/lablink-index.html
+          asset=$(grep -oE 'src="/assets/[^"]+\.js"' /tmp/lablink-index.html | cut -d'"' -f2)
+          test -n "$asset"
+          curl --fail --silent --show-error --head "$base$asset" | grep -qi '^cache-control: .*immutable'
+          curl --fail --silent --show-error "$base/api/auth/personas" | \
+            python3 -c 'import json, sys; assert any(p["id"] == "u-aarav" for p in json.load(sys.stdin))'
+          test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$base/api/docs")" = 404

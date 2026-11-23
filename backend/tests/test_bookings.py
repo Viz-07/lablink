@@ -1,12 +1,15 @@
 """Booking rules: confirmation paths, validation, ownership and concurrency."""
 
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 
-from .conftest import CSRF, free_slot, login
+from app.core.clock import FixedClock
+from app.domain.timeslots import at_local
+
+from .conftest import CSRF, free_slot, login, make_client
 
 
 def body(slot: dict[str, str], equipment: str = "eq-spectrum-rs", **extra: object) -> dict[str, object]:
@@ -89,3 +92,35 @@ def test_my_bookings_tabs(client: TestClient) -> None:
     login(client, "u-diya")
     for when in ("upcoming", "past", "action"):
         assert client.get(f"/api/bookings/mine?when={when}").status_code == 200
+
+
+def test_booking_calendar_and_suggestions_obey_horizon() -> None:
+    with make_client(clock=FixedClock(at_local(date(2026, 11, 23), "10:15"))) as client:
+        login(client, "u-diya")
+        equipment = "/api/equipment/eq-spectrum-rs"
+        horizon_day = "2026-12-07"
+        calendar = client.get(f"{equipment}/availability", params={"from": horizon_day, "days": 2}).json()
+        boundary = at_local(date.fromisoformat(horizon_day), "10:15")
+        slots = [slot for day in calendar["days"] for slot in day["slots"]]
+        assert any(slot["state"] == "free" for slot in slots)
+        assert all(
+            slot["state"] == "outside_horizon" and slot["free_units"] == 0
+            for slot in slots
+            if datetime.fromisoformat(slot["end"]) > boundary
+        )
+        suggestions = client.get(
+            f"{equipment}/suggest-slots",
+            params={"earliest": horizon_day, "latest": "9999-12-31", "duration_minutes": 30},
+        ).json()["suggestions"]
+        assert suggestions and all(datetime.fromisoformat(slot["end"]) <= boundary for slot in suggestions)
+        assert client.get(f"{equipment}/suggest-slots", params={"earliest": "9999-12-31"}).json() == {"suggestions": []}
+
+
+def test_catalogue_handles_dates_beyond_horizon_and_invalid_cursor(client: TestClient) -> None:
+    login(client, "u-diya")
+    assert client.get("/api/equipment", params={"available_on": "9999-12-31"}).json()["total"] == 0
+    for url in ("/api/equipment", "/api/bookings/mine"):
+        invalid = client.get(url, params={"cursor": "ll-\u00b2"})
+        assert invalid.status_code == 422
+        assert invalid.json()["error"]["code"] == "BAD_CURSOR"
+        assert client.get(url, params={"cursor": "ll-0", "limit": 1}).status_code == 200

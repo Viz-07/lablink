@@ -4,7 +4,7 @@ from ..ai.ai_service import rank
 from ..core.errors import AppError
 from ..domain.enums import Category
 from ..domain.models import Equipment, User
-from ..domain.timeslots import at_local
+from ..domain.timeslots import at_local, campus_date
 from ..repositories.base import State
 from .alternatives import utilisation
 from .availability_service import eligibility, free_windows
@@ -12,8 +12,10 @@ from .availability_service import eligibility, free_windows
 
 def page[T](items: list[T], limit: int, cursor: str | None = None) -> dict:
     """Return a cursor-based page from an ordered list."""
-    if cursor and (not cursor.startswith("ll-") or not cursor[3:].isdigit() or len(cursor) > 12):
-        raise AppError("BAD_CURSOR", "The page cursor is invalid.")
+    if cursor:
+        offset_text = cursor[3:]
+        if not cursor.startswith("ll-") or len(cursor) > 12 or not (offset_text.isascii() and offset_text.isdigit()):
+            raise AppError("BAD_CURSOR", "The page cursor is invalid.")
     offset = int(cursor[3:]) if cursor else 0
     return {
         "items": items[offset : offset + limit],
@@ -49,6 +51,7 @@ def list_equipment(
     no_training: bool,
     limit: int,
     cursor: str | None,
+    horizon: datetime,
 ) -> dict:
     """Filter, sort, and paginate the equipment catalogue."""
     items = [
@@ -65,8 +68,11 @@ def list_equipment(
         hits = {hit.equipment_id for hit in rank(q, items)}
         items = [item for item in items if q.casefold() in item.name.casefold() or item.id in hits]
     if available_on:
-        start = max(now, at_local(available_on))
-        end = at_local(available_on + timedelta(days=1))
-        items = [item for item in items if next(free_windows(state, item, user, 30, start, end), None)]
+        if not campus_date(now) <= available_on <= campus_date(horizon):
+            items = []
+        else:
+            start = max(now, at_local(available_on))
+            end = min(horizon, at_local(available_on + timedelta(days=1)))
+            items = [item for item in items if next(free_windows(state, item, user, 30, start, end), None)]
     listing = page(items, limit, cursor)
     return {**listing, "total": len(items), "items": [summary(state, user, item, now) for item in listing["items"]]}

@@ -39,6 +39,21 @@ describe('AvailabilityGrid', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Selected slot');
   });
 
+  it('names and blocks times outside the booking window', () => {
+    const onSelect = vi.fn();
+    const [firstDay] = days;
+    const firstSlot = firstDay?.slots[0];
+    if (!firstDay || !firstSlot) throw new Error('Expected at least one seeded slot');
+    const slot = { ...firstSlot, state: 'outside_horizon' as const, free_units: 0 };
+    const calendar = [{ ...firstDay, slots: [slot, ...firstDay.slots.slice(1)] }];
+    render(<><h2 id="availability-title">Availability</h2>
+      <AvailabilityGrid days={calendar} duration={30} onSelect={onSelect}/></>);
+    const blocked = screen.getByRole('button', { name: /outside the booking window/ });
+    expect(blocked).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(blocked);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
   it('describes every cell for screen readers and passes axe', async () => {
     const { container } = render(<Harness onSelect={() => {}}/>);
     const labelled = screen.getAllByRole('gridcell').map(cell => cell.querySelector('button')!.getAttribute('aria-label'));

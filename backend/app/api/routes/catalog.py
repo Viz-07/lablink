@@ -65,6 +65,7 @@ def equipment(
         no_training=no_training,
         limit=limit,
         cursor=cursor,
+        horizon=s.now + timedelta(days=s.horizon),
     )
 
 
@@ -96,7 +97,7 @@ def equipment_availability(
         "OUTSIDE_HORIZON",
         "Choose a date near the booking window.",
     )
-    return availability(s.state, s.user, item, day, days, s.now)
+    return availability(s.state, s.user, item, day, days, s.now, s.now + timedelta(days=s.horizon))
 
 
 @router.get("/equipment/{key}/suggest-slots")
@@ -110,8 +111,10 @@ def equipment_suggest(
 ) -> dict:
     """Suggest feasible slots for a requested duration and time range."""
     item = find(s.state.equipment, key, "Equipment")
-    start = max(s.now, at_local(earliest)) if earliest else s.now
     horizon = s.now + timedelta(days=s.horizon)
+    if (earliest and earliest > campus_date(horizon)) or (latest and latest < campus_date(s.now)):
+        return {"suggestions": []}
+    start = max(s.now, at_local(earliest)) if earliest and earliest > campus_date(s.now) else s.now
     end = (
         min(horizon, at_local(latest + timedelta(days=1)))
         if latest and latest < campus_date(horizon)

@@ -1,8 +1,8 @@
 # LabLink
 
-![CI](https://github.com/<user>/lablink/actions/workflows/ci.yml/badge.svg)
+[![CI](https://github.com/Viz-07/lablink/actions/workflows/ci.yml/badge.svg)](https://github.com/Viz-07/lablink/actions/workflows/ci.yml)
 
-Live demo: <CLOUD_RUN_URL>
+[Public source repository](https://github.com/Viz-07/lablink)
 
 LabLink helps students find and book specialist equipment, development kits, and workstations across campus. Faculty review project access and resolve competing bookings with an auditable priority score. Lab administrators can see where demand exceeds capacity and which equipment has room for more use.
 
@@ -78,11 +78,20 @@ The app has a skip link, named controls, a keyboard-operable availability grid w
 
 ### Efficiency
 
-Routes are lazy-loaded, catalogue results are paginated, and fingerprinted assets use long-lived caching. The backend puts time and concurrency bounds on Gemini calls and reuses cached responses.
+Routes are lazy-loaded, catalogue results are paginated, and fingerprinted assets use long-lived caching. The backend puts time and concurrency bounds on Gemini calls and reuses cached responses. Slot searches calculate each weekly quota once per search, and booking lists serialize only the requested page.
 
 ### Testing
 
-The suite has **70 backend tests** and **90.64% backend coverage** (85% required), plus **38 frontend tests** including axe and light/dark WCAG contrast checks. Run these commands from the indicated directories after installing dependencies.
+The backend suite covers allocation outcomes, concurrent booking, authorization, and booking-window boundaries. The frontend suite includes keyboard navigation, axe checks, and light/dark contrast checks. CI publishes machine-readable test reports with each run. The backend coverage gate is 85%.
+
+| Workflow or control | Automated evidence |
+| --- | --- |
+| Fair allocation and student follow-through | [Workflow tests](backend/tests/test_workflows.py) check that the winning booking appears under Upcoming and losing students can accept alternatives. |
+| Capacity and booking limits | [Booking tests](backend/tests/test_bookings.py) check simultaneous requests for the last unit and the booking-window cutoff. |
+| Request validation and access control | [Security tests](backend/tests/test_security.py) check production headers, CSRF, and input limits. [Access tests](backend/tests/test_auth_and_access.py) check role and record boundaries. |
+| Keyboard access and contrast | [Availability grid tests](frontend/src/__tests__/AvailabilityGrid.test.tsx) check keyboard navigation and unavailable slots. [Contrast tests](frontend/src/__tests__/contrast.test.ts) check both themes. |
+
+Run these commands from the indicated directories after installing dependencies.
 
 ~~~text
 backend/   ruff check .
@@ -94,7 +103,7 @@ backend/   ruff check .
 frontend/  npm run typecheck
            npm test
            npm run build
-           npm audit --omit=dev --audit-level=high
+           npm audit --audit-level=high
 ~~~
 
 ## Run locally
@@ -122,7 +131,9 @@ npm run dev
 
 ## Deploy to Cloud Run
 
-Follow the [deployment guide](implementation.md). The demo uses a single instance with memory storage and Vertex AI through its runtime service account.
+Follow the [deployment and submission guide](instructions.md). CI builds the same Dockerfile and checks production startup, the /discover deep link, asset caching, demo personas, and disabled API documentation.
+
+The demo uses a single instance with memory storage and Vertex AI through its runtime service account. For PromptWars, verify the public Cloud Run URL in a private browser window and run an AI search to confirm that Vertex AI responds. Submit the public GitHub URL ending in `.git`, the Cloud Run URL, and the LinkedIn project post. Provide a short project description on the platform.
 
 ## Project structure
 

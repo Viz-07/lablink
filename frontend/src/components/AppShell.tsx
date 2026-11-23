@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { roleName } from '../format';
@@ -23,15 +23,26 @@ export function AppShell() {
   const menu = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
-  const [theme, setTheme] = useState(() => localStorage.getItem('lablink-theme') || 'system');
+  const [theme, setTheme] = useState(() => {
+    try {
+      const stored = localStorage.getItem('lablink-theme');
+      return stored === 'light' || stored === 'dark' ? stored : 'system';
+    } catch {
+      return 'system';
+    }
+  });
   const [fairness, setFairness] = useState(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     window.scrollTo(0, 0);
     setOpen(false);
   }, [location.pathname]);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem('lablink-theme', theme);
+    try {
+      localStorage.setItem('lablink-theme', theme);
+    } catch {
+      // Appearance still applies for this session when browser storage is unavailable.
+    }
   }, [theme]);
   useEffect(() => {
     if (!session) return;
@@ -49,13 +60,13 @@ export function AppShell() {
     <a className="skip" href="#main">Skip to main content</a>
     <header className="site-header"><div className="header-inner"><Brand/>
       {session ? <>
-        <button ref={menu} className="mobile-menu secondary" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="navigation"><Icon name="menu"/> Menu</button>
+        <button ref={menu} className="mobile-menu secondary" onClick={() => setOpen(current => !current)} aria-expanded={open} aria-controls="navigation"><Icon name="menu"/> Menu</button>
         <nav id="navigation" aria-label="Primary" className={open ? 'navigation open' : 'navigation'} onKeyDown={event => { if (event.key === 'Escape') { setOpen(false); menu.current?.focus(); } }}>
           {links.filter(([key]) => session.permissions.includes(key.split('/')[0] || '')).map(([key, label, icon]) =>
             <NavLink key={key} to={'/' + key}><Icon name={icon} size={17}/>{label}</NavLink>)}
         </nav>
         <div className="user-area"><Link className="icon-button notice-link" to="/notifications" aria-label={'Notifications, ' + unread + ' unread'}><Icon name="bell"/>{unread > 0 && <b>{unread > 9 ? '9+' : unread}</b>}</Link>
-          <details className="profile"><summary><span className="avatar">{session.user.name.split(' ').filter(s => !s.endsWith('.')).slice(0, 2).map(s => s[0]).join('')}</span><span className="profile-name">{session.user.name.split(' ').find(s => !s.endsWith('.'))}<small>{roleName(session.user.role)}</small></span><Icon name="chevron" size={14}/></summary>
+          <details className="profile"><summary aria-label={'Account menu for ' + session.user.name}><span className="avatar">{session.user.name.split(' ').filter(s => !s.endsWith('.')).slice(0, 2).map(s => s[0]).join('')}</span><span className="profile-name">{session.user.name.split(' ').find(s => !s.endsWith('.'))}<small>{roleName(session.user.role)}</small></span><Icon name="chevron" size={14}/></summary>
             <div className="profile-panel"><strong>{session.user.name}</strong><small>{roleName(session.user.role)} · {session.user.department_id.toUpperCase()}</small>
               <label>Appearance<select value={theme} onChange={e => setTheme(e.target.value)}><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
               {session.demo_mode && <Link to="/login" onClick={event => event.currentTarget.closest('details')?.removeAttribute('open')}>Switch persona</Link>}
