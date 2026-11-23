@@ -4,7 +4,7 @@ import { ApiError, post } from '../api/client';
 import type { Availability, Booking, EquipmentDetail, Grant, Interval, Option, Project, Suggestion } from '../api/types';
 import AvailabilityGrid from '../components/AvailabilityGrid';
 import { Icon, categoryIcon } from '../components/Icon';
-import { Alternatives, Badge, Dialog, ErrorBox, Heading, Loading } from '../components/ui';
+import { Alternatives, Badge, Dialog, ErrorBox, Heading, Loading, useFieldErrors } from '../components/ui';
 import { date, hours, range, shiftDay, today, word } from '../format';
 import { useAction, useApi, useToast } from '../hooks';
 
@@ -15,6 +15,7 @@ function BookingDialog({ item, interval, projects, grants, onClose, onBooked }: 
   const [project, setProject] = useState('');
   const [target, setTarget] = useState<Interval & {equipment_id: string; equipment_name: string}>({ ...interval, equipment_id: item.id, equipment_name: item.name });
   const action = useAction();
+  const bookingErrors = useFieldErrors(action.error, { PROJECT_REQUIRED: ['project_id'] });
   const alternatives = action.error instanceof ApiError && Array.isArray(action.error.details.alternatives) ? action.error.details.alternatives as Option[] : [];
   const grant = grants.find(g => g.project_id === project && g.equipment_ids.includes(target.equipment_id) && g.valid_until >= target.start.slice(0, 10)
     && g.remaining_minutes >= (Date.parse(target.end) - Date.parse(target.start)) / 60_000);
@@ -30,10 +31,11 @@ function BookingDialog({ item, interval, projects, grants, onClose, onBooked }: 
   return <Dialog title="Review your booking" onClose={onClose}>
     <form onSubmit={submit} className="stack">
       <div className="callout"><strong>{target.equipment_name}</strong><p><time dateTime={target.start}>{range(target)}</time></p></div>
-      <ErrorBox error={action.error}/>
+      <ErrorBox error={action.error} id={bookingErrors.errorId}/>
       {alternatives.length > 0 && <Alternatives options={alternatives} pending={action.pending} onAccept={option => { setTarget(option); action.clear(); }}/>}
-      <label>Purpose (required)<textarea required minLength={5} maxLength={300} rows={3} value={purpose} onChange={event => setPurpose(event.target.value)} aria-describedby="purpose-count" placeholder="What will you use this equipment for?"/><small id="purpose-count">{300 - purpose.length} characters left</small></label>
-      <label>Project {needsProject ? '(required)' : '(optional)'}<select required={needsProject} value={project} onChange={event => setProject(event.target.value)}><option value="">Select a project</option>{projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}</select></label>
+      <label>Purpose (required)<textarea required minLength={5} maxLength={300} rows={3} value={purpose} onChange={event => setPurpose(event.target.value)} {...bookingErrors.fieldProps('purpose', 'purpose-count')} placeholder="What will you use this equipment for?"/></label>
+      <small id="purpose-count">{300 - purpose.length} characters left</small>
+      <label>Project {needsProject ? '(required)' : '(optional)'}<select {...bookingErrors.fieldProps('project_id')} required={needsProject} value={project} onChange={event => setProject(event.target.value)}><option value="">Select a project</option>{projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}</select></label>
       {needsProject && !projects.length && <Link to="/projects">Create a project</Link>}
       <p className="muted">{grant ? 'This booking can use your access grant.' : needsProject ? 'Faculty will review the request.' : 'The slot will be confirmed if capacity is available.'}</p>
       <div className="button-row end"><button className="secondary" onClick={onClose} type="button">Close</button><button className="primary" disabled={action.pending}>{action.pending ? 'Submitting…' : 'Submit booking'}</button></div>
@@ -56,6 +58,7 @@ export default function EquipmentDetailPage() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const calendar = useApi<Availability>('/equipment/' + id + '/availability?from=' + from + '&days=7');
   const action = useAction();
+  const slotErrors = useFieldErrors(action.error);
   const item = equipment.data;
 
   async function suggest(event: FormEvent<HTMLFormElement>) {
@@ -71,7 +74,7 @@ export default function EquipmentDetailPage() {
   }
 
   function week(step: number) { setFrom(shiftDay(from, step * 7)); setSelected(undefined); }
-  if (equipment.loading) return <Loading/>;
+  if (equipment.loading) return <><Heading title="Equipment"/><Loading/></>;
   if (!item) return <><Heading title="Equipment"/><ErrorBox error={equipment.error}/><Link to="/discover">Back to discovery</Link></>;
   const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   return <>
@@ -94,12 +97,12 @@ export default function EquipmentDetailPage() {
       <div className="section-heading"><div><h2 id="availability-title">Availability</h2><p>{date(from)} to {date(shiftDay(from, 6))}</p></div>
         <div className="button-row"><button className="secondary" disabled={from <= today()} onClick={() => week(-1)}>Previous week</button><button className="secondary" disabled={from >= shiftDay(today(), 7)} onClick={() => week(1)}>Next week</button></div></div>
       <form className="inline-form slot-finder" onSubmit={suggest}>
-        <label>Duration<select value={duration} onChange={event => { setDuration(Number(event.target.value)); setSelected(undefined); setSuggestions([]); }}>{Array.from({length: item.max_booking_minutes / 30}, (_, i) => (i + 1) * 30).map(min => <option value={min} key={min}>{hours(min)}</option>)}</select></label>
-        <label>By date<input type="date" min={today()} value={before} onChange={e => setBefore(e.target.value)}/></label>
-        <label>Time of day<select value={period} onChange={e => setPeriod(e.target.value)}><option value="">Any time</option><option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="evening">Evening</option></select></label>
+        <label>Duration<select {...slotErrors.fieldProps('duration_minutes')} value={duration} onChange={event => { setDuration(Number(event.target.value)); setSelected(undefined); setSuggestions([]); }}>{Array.from({length: item.max_booking_minutes / 30}, (_, i) => (i + 1) * 30).map(min => <option value={min} key={min}>{hours(min)}</option>)}</select></label>
+        <label>By date<input {...slotErrors.fieldProps('latest')} type="date" min={today()} value={before} onChange={e => setBefore(e.target.value)}/></label>
+        <label>Time of day<select {...slotErrors.fieldProps('part_of_day')} value={period} onChange={e => setPeriod(e.target.value)}><option value="">Any time</option><option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="evening">Evening</option></select></label>
         <button className="primary" disabled={action.pending || !item.eligibility.can_book}>{action.pending ? 'Checking…' : 'Suggest slots'}</button>
       </form>
-      <ErrorBox error={calendar.error || action.error}/>
+      <ErrorBox error={action.error || calendar.error} id={slotErrors.errorId}/>
       {suggestions.length > 0 && <div className="slot-options" aria-live="polite">{suggestions.map(option => <button key={option.start} className="secondary" aria-pressed={option.start === selected?.start} onClick={() => setSelected(option)}>{range(option)}</button>)}</div>}
       {calendar.loading && <Loading/>}
       {calendar.data && <AvailabilityGrid key={from} days={calendar.data.days} selected={selected} onSelect={setSelected} duration={duration}/>}

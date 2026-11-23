@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { post } from '../api/client';
 import type { Conflict } from '../api/types';
 import { Icon } from '../components/Icon';
-import { AI, Badge, Dialog, Empty, ErrorBox, Heading, Loading, Score, Status, Tabs } from '../components/ui';
+import { AI, Badge, Dialog, Empty, ErrorBox, Heading, Loading, Score, Status, Tabs, useFieldErrors } from '../components/ui';
 import { range, word } from '../format';
 import { useAction, useApi, useAuth, useToast } from '../hooks';
 
@@ -35,6 +35,7 @@ function Review({ id }: { id: string }) {
   const [demote, setDemote] = useState('');
   const [reason, setReason] = useState('');
   const action = useAction();
+  const { errorId, fieldProps } = useFieldErrors(action.error, { BAD_OVERRIDE: ['overrides.0.promote', 'overrides.0.demote'] });
   const toast = useToast();
   const auth = useAuth();
   const item = changed || record.data;
@@ -74,16 +75,16 @@ function Review({ id }: { id: string }) {
     </section>
     {Object.keys(item.messages).length > 0 && <details className="panel"><summary>Preview student messages</summary><dl className="pairs">{rows?.map(row => <div key={row.booking_id}><dt>{row.student}</dt><dd>{item.messages[row.booking_id]}</dd></div>)}</dl></details>}
     {showApply && <Dialog title="Apply this allocation?" onClose={() => setShowApply(false)}><form className="stack" onSubmit={e => {e.preventDefault(); void send('apply', {overrides: promote && demote ? [{promote, demote, reason}] : []});}}>
-      <p>{winners.length} bookings will be confirmed and {losers.length} students will be notified of the remaining options.</p><ErrorBox error={action.error}/>
+      <p>{winners.length} bookings will be confirmed and {losers.length} students will be notified of the remaining options.</p><ErrorBox error={action.error} id={errorId}/>
       {winners.length > 0 && losers.some(r => r.reason === 'CAPACITY') && <details><summary>Adjust an outcome</summary><div className="stack">
-        <label>Assign a slot to<select value={promote} onChange={e => {setPromote(e.target.value); if (!e.target.value) setDemote('');}}><option value="">Use recommendation</option>{losers.filter(r => r.reason === 'CAPACITY').map(row => <option key={row.booking_id} value={row.booking_id}>{row.student}</option>)}</select></label>
-        {promote && <><label>Student who receives alternatives (required)<select required value={demote} onChange={e => setDemote(e.target.value)}><option value="">Choose student</option>{winners.map(row => <option key={row.booking_id} value={row.booking_id}>{row.student}</option>)}</select></label>
-        <label>Reason (required)<textarea minLength={10} maxLength={500} required value={reason} onChange={e => setReason(e.target.value)}/></label></>}
+        <label>Assign a slot to<select value={promote} onChange={e => {setPromote(e.target.value); if (!e.target.value) setDemote('');}} {...fieldProps('overrides.0.promote')}><option value="">Use recommendation</option>{losers.filter(r => r.reason === 'CAPACITY').map(row => <option key={row.booking_id} value={row.booking_id}>{row.student}</option>)}</select></label>
+        {promote && <><label>Student who receives alternatives (required)<select required value={demote} onChange={e => setDemote(e.target.value)} {...fieldProps('overrides.0.demote')}><option value="">Choose student</option>{winners.map(row => <option key={row.booking_id} value={row.booking_id}>{row.student}</option>)}</select></label>
+        <label>Reason (required)<textarea minLength={10} maxLength={500} required value={reason} onChange={e => setReason(e.target.value)} {...fieldProps('overrides.0.reason')}/></label></>}
       </div></details>}
       <div className="button-row end"><button className="secondary" type="button" onClick={() => setShowApply(false)}>Cancel</button><button className="primary" disabled={action.pending}>Apply and notify</button></div>
     </form></Dialog>}
     {showDismiss && <Dialog title="Dismiss conflict" onClose={() => setShowDismiss(false)}><form className="stack" onSubmit={e => {e.preventDefault(); void send('dismiss', {reason});}}>
-      <p>The competing requests will be declined.</p><label>Reason (required)<textarea required minLength={5} maxLength={500} value={reason} onChange={e => setReason(e.target.value)}/></label><ErrorBox error={action.error}/>
+      <p>The competing requests will be declined.</p><label>Reason (required)<textarea required minLength={5} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} {...fieldProps('reason')}/></label><ErrorBox error={action.error} id={errorId}/>
       <button className="destructive" disabled={action.pending}>Dismiss and notify</button></form></Dialog>}
   </>;
 }

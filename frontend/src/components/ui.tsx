@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import type { Breakdown, Option, Source } from '../api/types';
 import { range, word } from '../format';
@@ -6,19 +7,40 @@ import { Icon } from './Icon';
 
 export function Heading({ label, title, subtitle, action }: { label?: string; title: string; subtitle?: string; action?: ReactNode }) {
   const ref = useRef<HTMLHeadingElement>(null);
-  useEffect(() => { document.title = title + ' · LabLink'; ref.current?.focus({ preventScroll: true }); }, [title]);
+  const { pathname } = useLocation();
+  useEffect(() => { document.title = title + ' · LabLink'; ref.current?.focus({ preventScroll: true }); }, [pathname, title]);
   return <div className="page-heading"><div>{label && <p className="eyebrow">{label}</p>}<h1 ref={ref} tabIndex={-1}>{title}</h1>{subtitle && <p className="lead">{subtitle}</p>}</div>{action}</div>;
 }
-export function ErrorBox({ error }: { error?: Error | null }) {
+
+function fieldIssues(error?: Error | null) {
+  return error instanceof ApiError && Array.isArray(error.details.fields) ? error.details.fields as {field: string; message: string}[] : [];
+}
+
+export function useFieldErrors(error?: Error | null, fieldsByCode: Record<string, readonly string[]> = {}) {
+  const errorId = useId();
+  const paths = fieldIssues(error).map(issue => issue.field.replace(/^(body|query)\./, ''));
+  const mappedFields = error instanceof ApiError ? fieldsByCode[error.code] : undefined;
+  const serviceFields = Array.isArray(mappedFields) ? mappedFields : [];
+
+  function fieldProps(name: string, helpId?: string, localErrorId?: string) {
+    const invalid = serviceFields.includes(name) || paths.some(path => path === name || path.startsWith(name + '.'));
+    const description = [helpId, invalid ? errorId : undefined, localErrorId].filter(Boolean).join(' ');
+    return { 'aria-invalid': invalid || Boolean(localErrorId) || undefined, 'aria-describedby': description || undefined };
+  }
+
+  return { errorId, fieldProps };
+}
+
+export function ErrorBox({ error, id }: { error?: Error | null; id?: string }) {
   if (!error) return null;
-  const fields = error instanceof ApiError && Array.isArray(error.details.fields) ? error.details.fields as {field: string; message: string}[] : [];
-  return <div className="callout danger" role="alert"><strong>{error.message}</strong>{fields.length > 0 && <ul>{fields.map(field => <li key={field.field}>{word(field.field.split('.').slice(-1)[0] || field.field)}: {field.message}</li>)}</ul>}{error instanceof ApiError && error.requestId && <small>Request ID {error.requestId}</small>}</div>;
+  const fields = fieldIssues(error);
+  return <div className="callout danger" role="alert" id={id}><strong>{error.message}</strong>{fields.length > 0 && <ul>{fields.map(field => <li key={field.field}>{word(field.field.split('.').slice(-1)[0] || field.field)}: {field.message}</li>)}</ul>}{error instanceof ApiError && error.requestId && <small>Request ID {error.requestId}</small>}</div>;
 }
 export function Loading({ children = 'Loading…' }: { children?: ReactNode }) {
   return <div className="loading" role="status" aria-busy="true"><span className="loader"/>{children}</div>;
 }
-export function Empty({ title, children }: { title: string; children?: ReactNode }) {
-  return <section className="empty"><Icon name="folder" size={26}/><h2>{title}</h2>{children}</section>;
+export function Empty({ title, children, heading: Title = 'h2' }: { title: string; children?: ReactNode; heading?: 'h2' | 'h3' }) {
+  return <section className="empty"><Icon name="folder" size={26}/><Title>{title}</Title>{children}</section>;
 }
 export function Badge({ children, tone = '' }: { children: ReactNode; tone?: string }) {
   return <span className={'badge ' + tone}>{children}</span>;

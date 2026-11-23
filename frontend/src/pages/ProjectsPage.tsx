@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import { api, post } from '../api/client';
 import type { AccessRequest, EquipmentSummary, Grant, Named, Page, Project } from '../api/types';
 import { Icon } from '../components/Icon';
-import { Badge, Dialog, Empty, ErrorBox, Heading, Loading, Status } from '../components/ui';
+import { Badge, Dialog, Empty, ErrorBox, Heading, Loading, Status, useFieldErrors } from '../components/ui';
 import { date, hours, PROJECT_TYPES, today, word } from '../format';
 import { useAction, useApi, useAuth, useToast } from '../hooks';
 
 function ProjectForm({ project, onClose, onSaved }: { project?: Project; onClose: () => void; onSaved: () => void }) {
   const faculty = useApi<Named[]>('/faculty');
   const action = useAction();
+  const { errorId, fieldProps } = useFieldErrors(action.error, { INVALID_SUPERVISOR: ['supervisor_id'], PAST_DEADLINE: ['deadline'] });
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const values = new FormData(event.currentTarget);
@@ -19,12 +20,12 @@ function ProjectForm({ project, onClose, onSaved }: { project?: Project; onClose
     if (result) onSaved();
   }
   return <Dialog title={project ? 'Edit project' : 'New project'} onClose={onClose}><form className="stack" onSubmit={save}>
-    <ErrorBox error={action.error || faculty.error}/>
-    <label>Title (required)<input name="title" required minLength={3} maxLength={120} defaultValue={project?.title}/></label>
-    <div className="field-pair"><label>Project type<select name="type" defaultValue={project?.type || 'course_lab'}>{PROJECT_TYPES.map(value => <option key={value} value={value}>{word(value)}</option>)}</select></label>
-      <label>Deadline<input name="deadline" type="date" min={today()} defaultValue={project?.deadline || ''}/></label></div>
-    <label>Faculty supervisor<select name="supervisor_id" defaultValue={project?.supervisor_id || ''}><option value="">Select a supervisor</option>{faculty.data?.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label>
-    <label>Description (required)<textarea name="description" rows={4} required minLength={20} maxLength={2000} defaultValue={project?.description}/></label>
+    <ErrorBox error={action.error || faculty.error} id={errorId}/>
+    <label>Title (required)<input name="title" {...fieldProps('title')} required minLength={3} maxLength={120} defaultValue={project?.title}/></label>
+    <div className="field-pair"><label>Project type<select name="type" {...fieldProps('type')} defaultValue={project?.type || 'course_lab'}>{PROJECT_TYPES.map(value => <option key={value} value={value}>{word(value)}</option>)}</select></label>
+      <label>Deadline<input name="deadline" {...fieldProps('deadline')} type="date" min={today()} defaultValue={project?.deadline || ''}/></label></div>
+    <label>Faculty supervisor<select name="supervisor_id" {...fieldProps('supervisor_id')} defaultValue={project?.supervisor_id || ''}><option value="">Select a supervisor</option>{faculty.data?.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label>
+    <label>Description (required)<textarea name="description" {...fieldProps('description')} rows={4} required minLength={20} maxLength={2000} defaultValue={project?.description}/></label>
     <div className="button-row end"><button type="button" className="secondary" onClick={onClose}>Close</button><button className="primary" disabled={action.pending}>{action.pending ? 'Saving…' : 'Save project'}</button></div>
   </form></Dialog>;
 }

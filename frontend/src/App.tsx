@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ReactNode } from 'react';
+import { lazy, type ReactNode } from 'react';
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
 import { Heading, Loading } from './components/ui';
@@ -26,7 +26,7 @@ function Guard({ permission, children }: { permission?: string; children: ReactN
   return children;
 }
 export default function App() {
-  return <Suspense fallback={<Loading/>}><Routes><Route element={<AppShell/>}>
+  return <Routes><Route element={<AppShell/>}>
     <Route index element={<Navigate replace to="/discover"/>}/>
     <Route path="login" element={<Login/>}/>
     <Route path="discover" element={<Guard><Discover/></Guard>}/>
@@ -41,6 +41,6 @@ export default function App() {
     <Route path="manage/audit" element={<Guard permission="manage"><Audit/></Guard>}/>
     <Route path="notifications" element={<Guard><Notifications/></Guard>}/>
     <Route path="*" element={<><Heading title="Page not found"/><Link className="button primary" to="/">Return to LabLink</Link></>}/>
-  </Route></Routes></Suspense>;
+  </Route></Routes>;
 }
 

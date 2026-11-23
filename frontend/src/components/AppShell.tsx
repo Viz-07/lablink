@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { roleName } from '../format';
 import { useAuth } from '../hooks';
 import { Icon, type IconName } from './Icon';
+import { Loading } from './ui';
 
 const links: [string, string, IconName][] = [
   ['discover', 'Discover', 'grid'], ['bookings', 'My bookings', 'calendar'], ['projects', 'Projects', 'folder'],
@@ -64,7 +65,9 @@ export function AppShell() {
         </div>
       </> : <span className="demo-label"><span/> Campus demo</span>}
     </div></header>
-    <main id="main" className={location.pathname === '/login' ? 'main login-main' : 'main'} tabIndex={-1}><Outlet/></main>
+    <main id="main" className={location.pathname === '/login' ? 'main login-main' : 'main'} tabIndex={-1}>
+      <Suspense fallback={<Loading/>}><Outlet/></Suspense>
+    </main>
     <footer className="footer"><div><span><strong>LabLink</strong> · Campus laboratory resource sharing</span><div>
       <button className="text-button" type="button" aria-expanded={fairness} onClick={() => setFairness(!fairness)}>How fairness works</button>
       {session?.demo_mode && <span>Demo mode</span>}

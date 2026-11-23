@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { post } from '../api/client';
 import type { Approval, Summary } from '../api/types';
 import { Icon } from '../components/Icon';
-import { AI, Badge, Empty, ErrorBox, Heading, Loading, Tabs } from '../components/ui';
+import { AI, Badge, Empty, ErrorBox, Heading, Loading, Tabs, useFieldErrors } from '../components/ui';
 import { date, range, word } from '../format';
 import { useAction, useApi, useToast } from '../hooks';
 
@@ -11,16 +11,24 @@ function ApprovalCard({ item, onReviewed }: {item: Approval; onReviewed: () => v
   const [comment, setComment] = useState('');
   const [quantity, setQuantity] = useState(item.hours);
   const [showSummary, setShowSummary] = useState(false);
-  const [validation, setValidation] = useState('');
+  const [validation, setValidation] = useState<{ field: 'comment' | 'hours_approved'; message: string }>();
   const action = useAction();
+  const { errorId, fieldProps } = useFieldErrors(action.error, { INVALID_QUOTA: ['hours_approved'] });
+  const validationId = item.id + '-validation';
   const toast = useToast();
   const endpoint = '/approvals/' + item.type + '/' + item.id;
   const summary = useApi<Summary>(showSummary ? endpoint + '/summary' : undefined);
 
   async function review(approve: boolean) {
-    setValidation('');
-    if (!approve && comment.trim().length < 5) { setValidation('Enter a comment of at least five characters before declining.'); return; }
-    if (approve && item.type === 'access' && (quantity < 1 || quantity > item.hours || !Number.isInteger(quantity))) { setValidation('Enter whole hours between 1 and the requested total.'); return; }
+    setValidation(undefined);
+    if (!approve && comment.trim().length < 5) {
+      setValidation({ field: 'comment', message: 'Enter a comment of at least five characters before declining.' });
+      return;
+    }
+    if (approve && item.type === 'access' && (quantity < 1 || quantity > item.hours || !Number.isInteger(quantity))) {
+      setValidation({ field: 'hours_approved', message: 'Enter whole hours between 1 and the requested total.' });
+      return;
+    }
     const changed = await action.run(() => post<object>(endpoint + (approve ? '/approve' : '/decline'), { comment, ...(approve && item.type === 'access' ? { hours_approved: quantity } : {}) }));
     if (changed) { toast((approve ? 'Approved. ' : 'Declined. ') + item.requester + ' has been notified.'); onReviewed(); }
   }
@@ -33,10 +41,10 @@ function ApprovalCard({ item, onReviewed }: {item: Approval; onReviewed: () => v
     <details><summary>Read full justification</summary><p>{item.justification}</p></details>
     <button className="secondary" onClick={() => setShowSummary(!showSummary)} aria-expanded={showSummary}><Icon name="spark" size={17}/>{showSummary ? 'Hide review summary' : 'Generate review summary'}</button>
     {showSummary && <div className="callout"><ErrorBox error={summary.error}/>{summary.loading && <Loading/>}{summary.data && <><AI source={summary.data.source}/><p>{summary.data.summary}</p><p><strong>Suggestion</strong> · {word(summary.data.recommendation)}</p></>}</div>}
-    <div className="review-form"><label>Reviewer comment<textarea value={comment} onChange={e => setComment(e.target.value)} rows={2} maxLength={500} aria-describedby={validation ? item.id + '-validation' : undefined}/></label>
-      {item.type === 'access' && <label>Hours to approve<input type="number" min={1} max={item.hours} value={quantity} onChange={event => setQuantity(Number(event.target.value))}/></label>}
+    <div className="review-form"><label>Reviewer comment<textarea value={comment} onChange={e => setComment(e.target.value)} rows={2} maxLength={500} {...fieldProps('comment', undefined, validation?.field === 'comment' ? validationId : undefined)}/></label>
+      {item.type === 'access' && <label>Hours to approve<input type="number" min={1} max={item.hours} value={quantity} onChange={event => setQuantity(Number(event.target.value))} {...fieldProps('hours_approved', undefined, validation?.field === 'hours_approved' ? validationId : undefined)}/></label>}
     </div>
-    {validation && <p className="callout danger" id={item.id + '-validation'} role="alert">{validation}</p>}<ErrorBox error={action.error}/>
+    {validation && <p className="callout danger" id={validationId} role="alert">{validation.message}</p>}<ErrorBox error={action.error} id={errorId}/>
     <div className="button-row">{item.conflict_id ? <Link className="button primary" to={'/conflicts/' + item.conflict_id}>Review conflict</Link> :
       <button className="primary" disabled={action.pending} onClick={() => void review(true)}>Approve</button>}
       <button className="secondary" disabled={action.pending} onClick={() => void review(false)}>Decline</button></div>
