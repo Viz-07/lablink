@@ -1,0 +1,48 @@
+export type Role = 'student' | 'faculty' | 'lab_admin';
+export type Source = 'ai' | 'fallback';
+export type Named = { id: string; name: string };
+export type Persona = Named & { role: Role; department: string; blurb: string };
+export type User = Named & { role: Role; department_id: string; certifications: string[] };
+export type Session = { user: User; permissions: string[]; demo_mode: boolean };
+export type Department = Named & { code: string };
+export type Lab = Named & { department_id: string; building: string; room: string; opening_hours: Record<string, {open: string; close: string}[]>; accessibility_notes: string; contact_email: string };
+export type Equipment = Named & {
+  category: string; kind: string; lab_id: string; department_id: string; description: string;
+  specs: Record<string, string>; capability_tags: string[]; unit_ids: string[];
+  approval_mode: 'auto' | 'faculty'; required_training: string | null; max_booking_minutes: number;
+  weekly_limit_minutes_per_user: number; high_demand: boolean; status: 'active' | 'maintenance' | 'retired';
+};
+export type EquipmentSummary = Equipment & { lab_name: string; lab_room: string; units: number; next_free_slot: string | null; utilisation_7d: number };
+export type EquipmentDetail = EquipmentSummary & { lab: Lab; eligibility: { can_book: boolean; reasons: string[] } };
+export type Page<T> = { items: T[]; next_cursor: string | null; total?: number };
+export type Interval = { start: string; end: string };
+export type Slot = Interval & { free_units: number; total_units: number; state: 'free' | 'partial' | 'full' | 'closed' | 'past' | 'mine' };
+export type Day = { date: string; slots: Slot[] };
+export type Availability = { slot_minutes: number; days: Day[] };
+export type Option = Interval & { equipment_id: string; equipment_name: string; lab_name: string; reason: string; score: number };
+export type Suggestion = Interval & { reason: string };
+export type Factor = { label: string; value: number; weight: number; contribution: number };
+export type Breakdown = { score: number; factors: Record<string, Factor> };
+export type Booking = Interval & { id: string; equipment_id: string; equipment_name: string; lab_name: string; status: string; purpose: string; project_id: string | null; conflict_id: string | null; alternatives: Option[]; priority_snapshot: Breakdown | null; message: string | null };
+export type Project = { id: string; owner_id: string; title: string; description: string; type: string; deadline: string | null; supervisor_id: string | null };
+export type AccessRequest = { id: string; project_id: string; equipment_ids: string[]; hours_requested: number; status: string; reviewer_comment: string | null };
+export type Grant = { id: string; project_id: string; equipment_ids: string[]; remaining_minutes: number; minutes_quota: number; valid_until: string };
+export type Hit = { equipment_id: string; reason: string; match: number };
+export type Search = { source: Source; interpreted: string; results: (Hit & { equipment: EquipmentSummary })[] };
+export type Draft = { source: Source; justification: string; estimated_hours: number; checklist: string[]; suggested_equipment: Hit[]; training_needed: string[] };
+export type Flag = { code: string; message: string };
+export type Approval = Interval & { type: 'booking' | 'access'; id: string; requester: string; equipment: string[]; project: Project | null; created_at: string; justification: string; hours: number; flags: Flag[]; conflict_id: string | null };
+export type Summary = { source: Source; summary: string; recommendation: string; flags: Flag[] };
+export type Allocation = { booking_id: string; student: string; project: string | null; breakdown: Breakdown; unit_id: string | null; reason: string | null; alternatives: Option[] };
+export type Conflict = { id: string; equipment_name: string; lab_name: string; window_start: string; window_end: string; capacity: number; n_requests: number; status: string; requests?: (Interval & Pick<Allocation, 'booking_id' | 'student' | 'project' | 'breakdown'>)[]; recommendation: Allocation[] | null; ai_explanation: string | null; explanation_source: Source | null; messages: Record<string, string> };
+export type Analytics = {
+  kpis: { utilisation_pct: number; bookings: number; unique_students: number; contested: number; no_show_pct: number; avg_lead_time_h: number };
+  by_equipment: { id: string; name: string; utilisation_pct: number; demand_ratio: number; bookings: number; no_show_pct: number }[];
+  heatmap: { hours: number[]; cells: number[][] };
+  by_department: { id: string; name: string; bookings: number; hours: number }[];
+};
+export type Insights = { source: Source; insights: { title: string; detail: string; action: string; equipment_ids: string[]; severity: string }[] };
+export type Notice = { id: string; title: string; body: string; created_at: string; link: string; read: boolean };
+export type Notices = { items: Notice[]; unread_count: number };
+export type Audit = { id: string; at: string; actor_id: string; action: string; target_id: string; details: Record<string, string | number> };
+
